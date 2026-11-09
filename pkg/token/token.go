@@ -1,4 +1,4 @@
-package parser
+package token
 
 type TokenType string
 

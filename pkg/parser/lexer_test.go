@@ -2,6 +2,7 @@ package parser_test
 
 import (
 	"plain/pkg/parser"
+	"plain/pkg/token"
 	"testing"
 )
 
@@ -9,18 +10,18 @@ func TestLexerBasic(t *testing.T) {
 	input := `Var total As Numeric = 10 + 20`
 
 	tests := []struct {
-		expectedType    parser.TokenType
+		expectedType    token.TokenType
 		expectedLiteral string
 	}{
-		{parser.VAR, "Var"},
-		{parser.IDENT, "total"},
-		{parser.AS, "As"},
-		{parser.NUMERIC, "Numeric"},
-		{parser.ASSIGN, "="},
-		{parser.NUMBER, "10"},
-		{parser.PLUS, "+"},
-		{parser.NUMBER, "20"},
-		{parser.EOF, ""},
+		{token.VAR, "Var"},
+		{token.IDENT, "total"},
+		{token.AS, "As"},
+		{token.NUMERIC, "Numeric"},
+		{token.ASSIGN, "="},
+		{token.NUMBER, "10"},
+		{token.PLUS, "+"},
+		{token.NUMBER, "20"},
+		{token.EOF, ""},
 	}
 
 	l := parser.NewLexer(input)

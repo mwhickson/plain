@@ -1,5 +1,7 @@
 package parser
 
+import "plain/pkg/token"
+
 type Lexer struct {
 	input        string
 	position     int  // current position in input (points to current char)
@@ -24,8 +26,8 @@ func (l *Lexer) readChar() {
 	l.readPosition++
 }
 
-func (l *Lexer) NextToken() Token {
-	var tok Token
+func (l *Lexer) NextToken() token.Token {
+	var tok token.Token
 
 	l.skipWhitespace()
 
@@ -36,36 +38,36 @@ func (l *Lexer) NextToken() Token {
 		if l.peekChar() == '=' {
 			ch := l.ch
 			l.readChar()
-			tok = Token{Type: EQ, Literal: string(ch) + string(l.ch), Line: l.line}
+			tok = token.Token{Type: token.EQ, Literal: string(ch) + string(l.ch), Line: l.line}
 		} else {
-			tok = Token{Type: ASSIGN, Literal: string(l.ch), Line: l.line}
+			tok = token.Token{Type: token.ASSIGN, Literal: string(l.ch), Line: l.line}
 		}
 	case '+':
-		tok = Token{Type: PLUS, Literal: string(l.ch), Line: l.line}
+		tok = token.Token{Type: token.PLUS, Literal: string(l.ch), Line: l.line}
 	case '-':
-		tok = Token{Type: MINUS, Literal: string(l.ch), Line: l.line}
+		tok = token.Token{Type: token.MINUS, Literal: string(l.ch), Line: l.line}
 	case '*':
-		tok = Token{Type: ASTERISK, Literal: string(l.ch), Line: l.line}
+		tok = token.Token{Type: token.ASTERISK, Literal: string(l.ch), Line: l.line}
 	case '/':
-		tok = Token{Type: SLASH, Literal: string(l.ch), Line: l.line}
+		tok = token.Token{Type: token.SLASH, Literal: string(l.ch), Line: l.line}
 	case '(':
-		tok = Token{Type: LPAREN, Literal: string(l.ch), Line: l.line}
+		tok = token.Token{Type: token.LPAREN, Literal: string(l.ch), Line: l.line}
 	case ')':
-		tok = Token{Type: RPAREN, Literal: string(l.ch), Line: l.line}
+		tok = token.Token{Type: token.RPAREN, Literal: string(l.ch), Line: l.line}
 	case 0:
 		tok.Literal = ""
-		tok.Type = EOF
+		tok.Type = token.EOF
 	default:
 		if isLetter(l.ch) {
 			tok.Literal = l.readIdentifier()
-			tok.Type = LookupIdent(tok.Literal)
+			tok.Type = token.LookupIdent(tok.Literal)
 			return tok
 		} else if isDigit(l.ch) {
 			tok.Literal = l.readNumber()
-			tok.Type = NUMBER
+			tok.Type = token.NUMBER
 			return tok
 		} else {
-			tok = Token{Type: ILLEGAL, Literal: string(l.ch), Line: l.line}
+			tok = token.Token{Type: token.ILLEGAL, Literal: string(l.ch), Line: l.line}
 		}
 	}
 
