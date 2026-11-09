@@ -84,6 +84,73 @@ func (vm *VM) Run() error {
 				return fmt.Errorf("type error: '+' expects numeric operands, got %s and %s", a.Type, b.Type)
 			}
 
+		case bytecode.OpSub:
+			b, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			a, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			if a.Type == value.ValNumeric && b.Type == value.ValNumeric {
+				vm.Push(value.NewNumeric(a.Num - b.Num))
+			} else {
+				return fmt.Errorf("type error: '-' expects numeric operands")
+			}
+
+		case bytecode.OpMul:
+			b, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			a, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			if a.Type == value.ValNumeric && b.Type == value.ValNumeric {
+				vm.Push(value.NewNumeric(a.Num * b.Num))
+			} else {
+				return fmt.Errorf("type error: '*' expects numeric operands")
+			}
+
+		case bytecode.OpDiv:
+			b, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			a, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			if a.Type == value.ValNumeric && b.Type == value.ValNumeric {
+				if b.Num == 0 {
+					return fmt.Errorf("division by zero")
+				}
+				vm.Push(value.NewNumeric(a.Num / b.Num))
+			} else {
+				return fmt.Errorf("type error: '/' expects numeric operands")
+			}
+
+		case bytecode.OpEq:
+			b, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			a, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			// Simple equality evaluation
+			equal := (a.Type == b.Type && a.Num == b.Num)
+			var val float64
+			if equal {
+				val = 1
+			} else {
+				val = 0
+			}
+			vm.Push(value.NewNumeric(val))
+
 		case bytecode.OpHalt:
 			return nil
 

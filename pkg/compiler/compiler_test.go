@@ -71,3 +71,36 @@ func TestCompilerVariableAssignment(t *testing.T) {
 	// Let's test compiling a second statement that loads it: "total"
 	// Or we can verify the VM globals directly if exposed, or append a load test.
 }
+
+func TestCompilerComplexExpressions(t *testing.T) {
+	input := `(10 + 20) * 2`
+
+	l := parser.NewLexer(input)
+	p := parser.NewParser(l)
+	program := p.ParseProgram()
+
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+
+	chunk := comp.Bytecode()
+
+	machine := vm.NewVM(chunk)
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+
+	result, err := machine.Pop()
+	if err != nil {
+		t.Fatalf("failed to pop result: %v", err)
+	}
+
+	if result.Num != 60 {
+		t.Errorf("expected result 60, got %f", result.Num)
+	}
+}

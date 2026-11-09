@@ -79,6 +79,14 @@ func (c *Compiler) Compile(node ast.Node) error {
 		switch n.Operator {
 		case "+":
 			c.chunk.WriteOpcode(bytecode.OpAdd)
+		case "-":
+			c.chunk.WriteOpcode(bytecode.OpSub)
+		case "*":
+			c.chunk.WriteOpcode(bytecode.OpMul)
+		case "/":
+			c.chunk.WriteOpcode(bytecode.OpDiv)
+		case "==":
+			c.chunk.WriteOpcode(bytecode.OpEq)
 		default:
 			return fmt.Errorf("unsupported infix operator %s", n.Operator)
 		}
