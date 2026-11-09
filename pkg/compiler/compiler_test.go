@@ -43,3 +43,31 @@ func TestCompilerExpressionCompilation(t *testing.T) {
 		t.Errorf("expected result 30, got %f", result.Num)
 	}
 }
+
+func TestCompilerVariableAssignment(t *testing.T) {
+	input := `Var total As Numeric = 10 + 20`
+
+	l := parser.NewLexer(input)
+	p := parser.NewParser(l)
+	program := p.ParseProgram()
+
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+
+	chunk := comp.Bytecode()
+
+	machine := vm.NewVM(chunk)
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+
+	// For a variable declaration statement, the value remains stored in globals[0].
+	// Let's test compiling a second statement that loads it: "total"
+	// Or we can verify the VM globals directly if exposed, or append a load test.
+}

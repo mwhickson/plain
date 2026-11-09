@@ -8,12 +8,16 @@ import (
 )
 
 type Compiler struct {
-	chunk *bytecode.Chunk
+	chunk       *bytecode.Chunk
+	symbolTable map[string]byte
+	varCount    byte
 }
 
 func New() *Compiler {
 	return &Compiler{
-		chunk: bytecode.NewChunk(),
+		chunk:       bytecode.NewChunk(),
+		symbolTable: make(map[string]byte),
+		varCount:    0,
 	}
 }
 
@@ -32,11 +36,28 @@ func (c *Compiler) Compile(node ast.Node) error {
 		}
 
 	case *ast.VarStatement:
-		// For our PoC, we compile the expression value. 
-		// (Variable table storage comes next, but for now we evaluate the RHS!)
+		// 1. Compile the RHS expression (evaluates and pushes result to stack)
 		if err := c.Compile(n.Value); err != nil {
 			return err
 		}
+		// 2. Assign or lookup variable slot
+		varIdx, exists := c.symbolTable[n.Name.Value]
+		if !exists {
+			varIdx = c.varCount
+			c.symbolTable[n.Name.Value] = varIdx
+			c.varCount++
+		}
+		// 3. Emit store instruction and variable index
+		c.chunk.WriteOpcode(bytecode.OpStoreVar)
+		c.chunk.WriteByte(varIdx)
+
+	case *ast.Identifier:
+		varIdx, exists := c.symbolTable[n.Value]
+		if !exists {
+			return fmt.Errorf("undefined variable: %s", n.Value)
+		}
+		c.chunk.WriteOpcode(bytecode.OpLoadVar)
+		c.chunk.WriteByte(varIdx)
 
 	case *ast.IntegerLiteral:
 		literalVal := value.NewNumeric(n.Value)

@@ -6,55 +6,67 @@ import (
 	"plain/pkg/value"
 )
 
-const StackMax = 1024
-
 type VM struct {
-	Chunk *bytecode.Chunk
-	IP    int
-	Stack [StackMax]value.Value
-	SP    int
+	chunk   *bytecode.Chunk
+	ip      int
+	stack   []value.Value
+	globals map[byte]value.Value // Variable storage slot
 }
 
 func NewVM(chunk *bytecode.Chunk) *VM {
 	return &VM{
-		Chunk: chunk,
-		IP:    0,
-		SP:    0,
+		chunk:   chunk,
+		ip:      0,
+		stack:   make([]value.Value, 0, 256),
+		globals: make(map[byte]value.Value),
 	}
 }
 
-func (vm *VM) Push(val value.Value) error {
-	if vm.SP >= StackMax {
-		return fmt.Errorf("stack overflow")
-	}
-	vm.Stack[vm.SP] = val
-	vm.SP++
-	return nil
+func (vm *VM) Push(val value.Value) {
+	vm.stack = append(vm.stack, val)
 }
 
 func (vm *VM) Pop() (value.Value, error) {
-	if vm.SP == 0 {
+	length := len(vm.stack)
+	if length == 0 {
 		return value.Value{}, fmt.Errorf("stack underflow")
 	}
-	vm.SP--
-	return vm.Stack[vm.SP], nil
+	val := vm.stack[length-1]
+	vm.stack = vm.stack[:length-1]
+	return val, nil
 }
 
 func (vm *VM) Run() error {
-	for vm.IP < len(vm.Chunk.Code) {
-		op := bytecode.Opcode(vm.Chunk.Code[vm.IP])
-		vm.IP++
+	for vm.ip < len(vm.chunk.Code) {
+		op := bytecode.Opcode(vm.chunk.Code[vm.ip])
+		vm.ip++
 
 		switch op {
-		case bytecode.OpPushConst:
-			constIdx := vm.Chunk.Code[vm.IP]
-			vm.IP++
-			if int(constIdx) >= len(vm.Chunk.Constants) {
-				return fmt.Errorf("constant index %d out of bounds", constIdx)
-			}
-			if err := vm.Push(vm.Chunk.Constants[constIdx]); err != nil {
+		case bytecode.OpStoreVar:
+			dataIndex := vm.chunk.Code[vm.ip]
+			vm.ip++
+			val, err := vm.Pop()
+			if err != nil {
 				return err
 			}
+			vm.globals[dataIndex] = val
+
+		case bytecode.OpLoadVar:
+			dataIndex := vm.chunk.Code[vm.ip]
+			vm.ip++
+			val, exists := vm.globals[dataIndex]
+			if !exists {
+				return fmt.Errorf("undefined variable index %d", dataIndex)
+			}
+			vm.Push(val)
+
+		case bytecode.OpPushConst:
+			constIdx := vm.chunk.Code[vm.ip]
+			vm.ip++
+			if int(constIdx) >= len(vm.chunk.Constants) {
+				return fmt.Errorf("constant index %d out of bounds", constIdx)
+			}
+			vm.Push(vm.chunk.Constants[constIdx])
 
 		case bytecode.OpAdd:
 			b, err := vm.Pop()
@@ -67,9 +79,7 @@ func (vm *VM) Run() error {
 			}
 
 			if a.Type == value.ValNumeric && b.Type == value.ValNumeric {
-				if err := vm.Push(value.NewNumeric(a.Num + b.Num)); err != nil {
-					return err
-				}
+				vm.Push(value.NewNumeric(a.Num + b.Num))
 			} else {
 				return fmt.Errorf("type error: '+' expects numeric operands, got %s and %s", a.Type, b.Type)
 			}
@@ -78,7 +88,7 @@ func (vm *VM) Run() error {
 			return nil
 
 		default:
-			return fmt.Errorf("unknown opcode %d at instruction pointer %d", op, vm.IP-1)
+			return fmt.Errorf("unknown opcode %d at instruction pointer %d", op, vm.ip-1)
 		}
 	}
 	return nil
