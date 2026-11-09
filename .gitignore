@@ -1,0 +1,37 @@
+# Compiled binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries (built with `go test -c`)
+*.test
+
+# Code coverage profiles and test artifacts
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Go workspace files (usually specific to local environments)
+go.work
+go.work.sum
+
+# Dependency directories
+# Uncomment this if you prefer caching dependencies locally in your vendor folder
+# instead of relying on the global module cache (not recommended for modern Go)
+# vendor/
+
+# Local configuration and environment files
+.env
+.env.local
+
+# Common Editor/IDE configurations
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
