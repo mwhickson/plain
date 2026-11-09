@@ -1,6 +1,6 @@
 package bytecode
 
-import "plain-language/pkg/value"
+import "plain/pkg/value"
 
 // Chunk represents a contiguous block of compiled bytecode instructions and constants.
 type Chunk struct {

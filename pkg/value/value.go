@@ -23,6 +23,25 @@ type Value struct {
 	Obj  any // Holds List ([]Value) or Struct (map[string]Value)
 }
 
+func (vt ValueType) String() string {
+	switch vt {
+	case ValNone:
+		return "None"
+	case ValNumeric:
+		return "Numeric"
+	case ValString:
+		return "String"
+	case ValBoolean:
+		return "Boolean"
+	case ValList:
+		return "List"
+	case ValStruct:
+		return "Struct"
+	default:
+		return "Unknown"
+	}
+}
+
 // Helper Constructors
 
 func NewNone() Value {

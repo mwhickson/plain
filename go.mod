@@ -1,3 +1,3 @@
-module plain-language
+module plain
 
 go 1.27.3
