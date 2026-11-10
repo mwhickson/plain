@@ -8,16 +8,18 @@ import (
 )
 
 type Compiler struct {
-	chunk       *bytecode.Chunk
-	symbolTable map[string]byte
-	varCount    byte
+	chunk            *bytecode.Chunk
+	symbolTable      map[string]byte // Global variables
+	localSymbolTable map[string]byte // Local variables/parameters (nil if in global scope)
+	varCount         byte
 }
 
 func New() *Compiler {
 	return &Compiler{
-		chunk:       bytecode.NewChunk(),
-		symbolTable: make(map[string]byte),
-		varCount:    0,
+		chunk:            bytecode.NewChunk(),
+		symbolTable:      make(map[string]byte),
+		localSymbolTable: nil,
+		varCount:         0,
 	}
 }
 
@@ -44,10 +46,93 @@ func (c *Compiler) Compile(node ast.Node) error {
 			}
 		}
 
+	case *ast.CallExpression: // or whatever your AST node for calls is named
+		// 1. Compile the function expression (evaluates to the FunctionObject)
+		if err := c.Compile(n.Function); err != nil {
+			return err
+		}
+		// 2. Compile arguments
+		for _, arg := range n.Arguments {
+			if err := c.Compile(arg); err != nil {
+				return err
+			}
+		}
+		// 3. Emit OpCall with argument count
+		c.chunk.WriteOpcode(bytecode.OpCall)
+		c.chunk.WriteByte(byte(len(n.Arguments)))
+
 	case *ast.ExpressionStatement:
 		if err := c.Compile(n.Expression); err != nil {
 			return err
 		}
+
+	case *ast.FunctionStatement:
+		// 1. Emit a jump around the function body
+		skipJumpPos := c.emit(bytecode.OpJump, 9999)
+
+		// 2. Record function start address
+		funcStartIndex := len(c.chunk.Code)
+
+		// Save outer local symbol table state
+		oldLocalSymbolTable := c.localSymbolTable
+
+		// Initialize local symbol table for this function scope
+		c.localSymbolTable = make(map[string]byte)
+		for idx, param := range n.Parameters {
+			c.localSymbolTable[param.Name.Value] = byte(idx)
+		}
+
+		// 3. Compile function body statements
+		for _, stmt := range n.Body {
+			if err := c.Compile(stmt); err != nil {
+				return err
+			}
+		}
+
+		// Ensure every function ends with a return (defaulting to None)
+		noneConstIdx := c.chunk.AddConstant(value.NewNone())
+		c.chunk.WriteOpcode(bytecode.OpPushConst)
+		c.chunk.WriteByte(noneConstIdx)
+		c.chunk.WriteOpcode(bytecode.OpReturn)
+
+		// Restore outer local symbol table
+		c.localSymbolTable = oldLocalSymbolTable
+
+		// Patch skip jump
+		endFuncIndex := len(c.chunk.Code)
+		c.changeOperand(skipJumpPos, endFuncIndex)
+
+		// 4. Create function object and store it as a global constant/variable
+		fnObj := &value.FunctionObject{
+			Name:                  n.Name.Value,
+			InstructionStartIndex: funcStartIndex,
+			ParamCount:            len(n.Parameters),
+		}
+		constIdx := c.chunk.AddConstant(value.Value{Type: value.ValFunction, Obj: fnObj})
+
+		varIdx, exists := c.symbolTable[n.Name.Value]
+		if !exists {
+			varIdx = c.varCount
+			c.symbolTable[n.Name.Value] = varIdx
+			c.varCount++
+		}
+		c.chunk.WriteOpcode(bytecode.OpPushConst)
+		c.chunk.WriteByte(constIdx)
+		c.chunk.WriteOpcode(bytecode.OpStoreVar)
+		c.chunk.WriteByte(varIdx)
+
+	case *ast.ReturnStatement:
+		if n.ReturnValue != nil {
+			if err := c.Compile(n.ReturnValue); err != nil {
+				return err
+			}
+		} else {
+			// Return None by default
+			noneConstIdx := c.chunk.AddConstant(value.NewNone())
+			c.chunk.WriteOpcode(bytecode.OpPushConst)
+			c.chunk.WriteByte(noneConstIdx)
+		}
+		c.chunk.WriteOpcode(bytecode.OpReturn)
 
 	case *ast.VarStatement:
 		// 1. Compile the RHS expression (evaluates and pushes result to stack)
@@ -147,6 +232,13 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.changeOperand(exitJumpPos, endLoopIndex)
 
 	case *ast.Identifier:
+		if c.localSymbolTable != nil {
+			if localIdx, exists := c.localSymbolTable[n.Value]; exists {
+				c.chunk.WriteOpcode(bytecode.OpLoadLocal)
+				c.chunk.WriteByte(localIdx)
+				return nil
+			}
+		}
 		varIdx, exists := c.symbolTable[n.Value]
 		if !exists {
 			return fmt.Errorf("undefined variable: %s", n.Value)

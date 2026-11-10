@@ -7,19 +7,30 @@ import (
 )
 
 type VM struct {
-	chunk   *bytecode.Chunk
-	ip      int
-	stack   []value.Value
-	globals map[byte]value.Value // Variable storage slot
+	chunk      *bytecode.Chunk
+	ip         int
+	stack      []value.Value
+	globals    map[byte]value.Value // Variable storage slot
+	frames     []Frame
+	frameIndex int
 }
 
 func NewVM(chunk *bytecode.Chunk) *VM {
-	return &VM{
-		chunk:   chunk,
-		ip:      0,
-		stack:   make([]value.Value, 0, 256),
-		globals: make(map[byte]value.Value),
+	vm := &VM{
+		chunk:      chunk,
+		ip:         0,
+		stack:      make([]value.Value, 0, 256),
+		globals:    make(map[byte]value.Value),
+		frames:     make([]Frame, 1024),
+		frameIndex: 1,
 	}
+	// Setup root frame for main script
+	vm.frames[0] = Frame{
+		fn:          nil,
+		ip:          0,
+		basePointer: 0,
+	}
+	return vm
 }
 
 func (vm *VM) Globals() map[byte]value.Value {
@@ -193,6 +204,94 @@ func (vm *VM) Run() error {
 				val = 0
 			}
 			vm.Push(value.NewNumeric(val))
+
+		case bytecode.OpCall:
+			numArgs := int(vm.chunk.Code[vm.ip])
+			vm.ip++
+
+			// Pop arguments in reverse order
+			args := make([]value.Value, numArgs)
+			for i := numArgs - 1; i >= 0; i-- {
+				arg, err := vm.Pop()
+				if err != nil {
+					return err
+				}
+				args[i] = arg
+			}
+
+			// Now pop the function object itself
+			callee, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+
+			if callee.Type != value.ValFunction {
+				return fmt.Errorf("type error: can only call functions, got %s", callee.Type)
+			}
+
+			fnObj := callee.Obj.(*value.FunctionObject)
+			if numArgs != fnObj.ParamCount {
+				return fmt.Errorf("wrong number of arguments: want %d, got %d", fnObj.ParamCount, numArgs)
+			}
+
+			// Save current frame's IP before switching
+			vm.frames[vm.frameIndex-1].ip = vm.ip
+
+			// Set base pointer for the new frame where arguments will reside on the stack
+			basePtr := len(vm.stack)
+			for _, arg := range args {
+				vm.Push(arg)
+			}
+
+			// Push new call frame
+			newFrame := Frame{
+				fn:          fnObj,
+				ip:          fnObj.InstructionStartIndex,
+				basePointer: basePtr,
+			}
+			vm.frames[vm.frameIndex] = newFrame
+			vm.frameIndex++
+
+			// Jump VM instruction pointer to function start
+			vm.ip = fnObj.InstructionStartIndex
+
+		case bytecode.OpReturn:
+			// Pop return value
+			retVal, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+
+			// Pop current frame
+			vm.frameIndex--
+			currentFrame := vm.frames[vm.frameIndex]
+
+			// Reset stack pointer back to frame base pointer
+			vm.stack = vm.stack[:currentFrame.basePointer]
+
+			// Restore previous frame IP
+			previousFrame := vm.frames[vm.frameIndex-1]
+			vm.ip = previousFrame.ip
+
+			// Push return value onto the stack
+			vm.Push(retVal)
+
+		case bytecode.OpLoadLocal:
+			slotIndex := vm.chunk.Code[vm.ip]
+			vm.ip++
+			currentFrame := vm.frames[vm.frameIndex-1]
+			val := vm.stack[currentFrame.basePointer+int(slotIndex)]
+			vm.Push(val)
+
+		case bytecode.OpStoreLocal:
+			slotIndex := vm.chunk.Code[vm.ip]
+			vm.ip++
+			val, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			currentFrame := vm.frames[vm.frameIndex-1]
+			vm.stack[currentFrame.basePointer+int(slotIndex)] = val
 
 		default:
 			return fmt.Errorf("unknown opcode %d at instruction pointer %d", op, vm.ip-1)

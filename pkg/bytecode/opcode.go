@@ -38,6 +38,8 @@ const (
 	// Functions & Calls
 	OpCall
 	OpReturn
+	OpLoadLocal
+	OpStoreLocal
 
 	// System / Execution
 	OpHalt Opcode = 0xFF

@@ -2,6 +2,7 @@ package ast
 
 import (
 	"plain/pkg/token"
+	"strings"
 )
 
 // Node represents any node in the Abstract Syntax Tree.
@@ -163,4 +164,82 @@ func (as *AssignmentStatement) statementNode()       {}
 func (as *AssignmentStatement) TokenLiteral() string { return as.Literal }
 func (as *AssignmentStatement) String() string {
 	return as.Name.String() + " = " + as.Value.String()
+}
+
+// Parameter represents a function parameter (e.g., a As Numeric)
+type Parameter struct {
+	token.Token
+	Name     *Identifier
+	TypeName string
+}
+
+func (p *Parameter) statementNode()       {}
+func (p *Parameter) TokenLiteral() string { return p.Literal }
+func (p *Parameter) String() string {
+	return p.Name.String() + " As " + p.TypeName
+}
+
+// FunctionStatement represents a function declaration block
+type FunctionStatement struct {
+	token.Token // The 'Function' token
+	Name        *Identifier
+	Parameters  []*Parameter
+	ReturnType  string // Optional; empty if none
+	Body        []Statement
+}
+
+func (fs *FunctionStatement) statementNode()       {}
+func (fs *FunctionStatement) TokenLiteral() string { return fs.Literal }
+func (fs *FunctionStatement) String() string {
+	var out string
+	out += "Function " + fs.Name.String() + "("
+	params := []string{}
+	for _, p := range fs.Parameters {
+		params = append(params, p.String())
+	}
+	out += strings.Join(params, ", ") + ")"
+	if fs.ReturnType != "" {
+		out += " As " + fs.ReturnType
+	}
+	for _, s := range fs.Body {
+		out += s.String()
+	}
+	out += " End Function"
+	return out
+}
+
+// ReturnStatement represents a return statement
+type ReturnStatement struct {
+	token.Token // The 'Return' token
+	ReturnValue Expression
+}
+
+func (rs *ReturnStatement) statementNode()       {}
+func (rs *ReturnStatement) TokenLiteral() string { return rs.Literal }
+func (rs *ReturnStatement) String() string {
+	var out string
+	out += "Return"
+	if rs.ReturnValue != nil {
+		out += " " + rs.ReturnValue.String()
+	}
+	return out
+}
+
+// CallExpression represents a function call (e.g., Add(10, 20))
+type CallExpression struct {
+	token.Token            // The '(' token
+	Function    Expression // Identifier or expression evaluating to a function
+	Arguments   []Expression
+}
+
+func (ce *CallExpression) expressionNode()      {}
+func (ce *CallExpression) TokenLiteral() string { return ce.Literal }
+func (ce *CallExpression) String() string {
+	var out string
+	args := []string{}
+	for _, arg := range ce.Arguments {
+		args = append(args, arg.String())
+	}
+	out += ce.Function.String() + "(" + strings.Join(args, ", ") + ")"
+	return out
 }

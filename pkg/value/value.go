@@ -12,6 +12,7 @@ const (
 	ValBoolean
 	ValList
 	ValStruct
+	ValFunction
 )
 
 // Value represents a dynamic scalar or composite object in the PLAIN VM.
@@ -78,7 +79,16 @@ func (v Value) String() string {
 		return "[List]"
 	case ValStruct:
 		return "[Struct]"
+	case ValFunction:
+		fn := v.Obj.(*FunctionObject)
+		return fmt.Sprintf("<fn %s>", fn.Name)
 	default:
 		return "Unknown"
 	}
+}
+
+type FunctionObject struct {
+	Name                  string
+	InstructionStartIndex int
+	ParamCount            int
 }

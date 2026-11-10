@@ -16,8 +16,9 @@ func NewChunk() *Chunk {
 }
 
 // WriteByte appends an instruction byte to the chunk.
-func (c *Chunk) WriteByte(b byte) {
+func (c *Chunk) WriteByte(b byte) error {
 	c.Code = append(c.Code, b)
+	return nil
 }
 
 // WriteOpcode appends an opcode byte to the chunk.

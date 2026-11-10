@@ -175,3 +175,42 @@ func TestCompilerRangeLoop(t *testing.T) {
 		t.Errorf("expected sum 15, got %f", sumVal.Num)
 	}
 }
+
+func TestCompilerFunctionCall(t *testing.T) {
+	input := `
+	Function Add(a As Numeric, b As Numeric) As Numeric
+		Return a + b
+	End Function
+
+	Var result As Numeric = Add(10, 20)
+	`
+
+	l := parser.NewLexer(input)
+	p := parser.NewParser(l)
+	program := p.ParseProgram()
+
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+
+	chunk := comp.Bytecode()
+
+	machine := vm.NewVM(chunk)
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+
+	// Verify that 'result' holds 30
+	resultVal, exists := machine.Globals()[1] // Assuming result is slot 1 (slot 0 being the function object itself)
+	if !exists {
+		t.Fatalf("expected variable 'result' in globals")
+	}
+	if resultVal.Num != 30 {
+		t.Errorf("expected result 30, got %f", resultVal.Num)
+	}
+}

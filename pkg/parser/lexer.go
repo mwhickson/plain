@@ -54,6 +54,8 @@ func (l *Lexer) NextToken() token.Token {
 		tok = token.Token{Type: token.LPAREN, Literal: string(l.ch), Line: l.line}
 	case ')':
 		tok = token.Token{Type: token.RPAREN, Literal: string(l.ch), Line: l.line}
+	case ',':
+		tok = token.Token{Type: token.COMMA, Literal: string(l.ch), Line: l.line}
 	case 0:
 		tok.Literal = ""
 		tok.Type = token.EOF

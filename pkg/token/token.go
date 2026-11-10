@@ -20,33 +20,45 @@ const (
 	EQ       = "=="
 	LPAREN   = "("
 	RPAREN   = ")"
+	COMMA    = ","
+	NOTEQ    = "!="
+	LT       = "<"
+	LTE      = "<="
+	GT       = ">"
+	GTE      = ">="
 
 	// Keywords
-	VAR     = "VAR"
-	AS      = "AS"
-	NUMERIC = "NUMERIC"
-	PRINT   = "PRINT"
-	IF      = "IF"
-	THEN    = "THEN"
-	ELSE    = "ELSE"
-	END     = "END"
-	FOR     = "FOR"
-	TO      = "TO"
-	STEP    = "STEP"
+	VAR      = "VAR"
+	AS       = "AS"
+	NUMERIC  = "NUMERIC"
+	PRINT    = "PRINT"
+	IF       = "IF"
+	THEN     = "THEN"
+	ELSE     = "ELSE"
+	END      = "END"
+	FOR      = "FOR"
+	TO       = "TO"
+	STEP     = "STEP"
+	FUNCTION = "FUNCTION"
+	RETURN   = "RETURN"
+	NONE     = "NONE"
 )
 
 var keywords = map[string]TokenType{
-	"Var":     VAR,
-	"As":      AS,
-	"Numeric": NUMERIC,
-	"Print":   PRINT,
-	"If":      IF,
-	"Then":    THEN,
-	"Else":    ELSE,
-	"End":     END,
-	"For":     FOR,
-	"To":      TO,
-	"Step":    STEP,
+	"Var":      VAR,
+	"As":       AS,
+	"Numeric":  NUMERIC,
+	"Print":    PRINT,
+	"If":       IF,
+	"Then":     THEN,
+	"Else":     ELSE,
+	"End":      END,
+	"For":      FOR,
+	"To":       TO,
+	"Step":     STEP,
+	"Function": FUNCTION,
+	"Return":   RETURN,
+	"None":     NONE,
 }
 
 func LookupIdent(ident string) TokenType {
