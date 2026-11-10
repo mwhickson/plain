@@ -23,6 +23,20 @@ func New() *Compiler {
 
 func (c *Compiler) Compile(node ast.Node) error {
 	switch n := node.(type) {
+	case *ast.AssignmentStatement:
+		// 1. Compile RHS expression
+		if err := c.Compile(n.Value); err != nil {
+			return err
+		}
+		// 2. Lookup existing variable slot
+		varIdx, exists := c.symbolTable[n.Name.Value]
+		if !exists {
+			return fmt.Errorf("undefined variable for assignment: %s", n.Name.Value)
+		}
+		// 3. Emit store instruction and slot index
+		c.chunk.WriteOpcode(bytecode.OpStoreVar)
+		c.chunk.WriteByte(varIdx)
+
 	case *ast.Program:
 		for _, s := range n.Statements {
 			if err := c.Compile(s); err != nil {

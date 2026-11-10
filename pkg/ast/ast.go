@@ -152,3 +152,15 @@ func (fs *ForStatement) String() string {
 	out += " End For"
 	return out
 }
+
+type AssignmentStatement struct {
+	token.Token // The identifier token
+	Name        *Identifier
+	Value       Expression
+}
+
+func (as *AssignmentStatement) statementNode()       {}
+func (as *AssignmentStatement) TokenLiteral() string { return as.Literal }
+func (as *AssignmentStatement) String() string {
+	return as.Name.String() + " = " + as.Value.String()
+}

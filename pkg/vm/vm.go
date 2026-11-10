@@ -22,6 +22,10 @@ func NewVM(chunk *bytecode.Chunk) *VM {
 	}
 }
 
+func (vm *VM) Globals() map[byte]value.Value {
+	return vm.globals
+}
+
 func (vm *VM) Push(val value.Value) {
 	vm.stack = append(vm.stack, val)
 }

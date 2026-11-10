@@ -140,8 +140,9 @@ func TestCompilerIfElseStatement(t *testing.T) {
 
 func TestCompilerRangeLoop(t *testing.T) {
 	input := `
+	Var sum As Numeric = 0
 	For i As Numeric = 1 To 5 Step 1
-		Var current As Numeric = i
+		sum = sum + i
 	End For
 	`
 
@@ -165,6 +166,12 @@ func TestCompilerRangeLoop(t *testing.T) {
 		t.Fatalf("vm execution error: %v", err)
 	}
 
-	// 1 + 2 + 3 + 4 + 5 = 15. Let's make sure our loop accumulated correctly!
-	// You can check the global variable corresponding to 'sum' or leave it on the stack.
+	// sum should hold 15 (1 + 2 + 3 + 4 + 5)
+	sumVal, exists := machine.Globals()[0] // assuming sum is slot 0
+	if !exists {
+		t.Fatalf("expected variable 'sum' in globals")
+	}
+	if sumVal.Num != 15 {
+		t.Errorf("expected sum 15, got %f", sumVal.Num)
+	}
 }
