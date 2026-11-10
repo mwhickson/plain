@@ -126,3 +126,29 @@ func (is *IfStatement) String() string {
 	out += " End If"
 	return out
 }
+
+// ForStatement represents a range or iterator loop block
+type ForStatement struct {
+	token.Token // The 'For' token
+	VarName     *Identifier
+	TypeName    string
+	Start       Expression
+	End         Expression
+	Step        Expression // Optional; can be nil (defaults to 1)
+	Body        []Statement
+}
+
+func (fs *ForStatement) statementNode()       {}
+func (fs *ForStatement) TokenLiteral() string { return fs.Literal }
+func (fs *ForStatement) String() string {
+	var out string
+	out += "For " + fs.VarName.String() + " As " + fs.TypeName + " = " + fs.Start.String() + " To " + fs.End.String()
+	if fs.Step != nil {
+		out += " Step " + fs.Step.String()
+	}
+	for _, s := range fs.Body {
+		out += s.String()
+	}
+	out += " End For"
+	return out
+}

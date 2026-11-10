@@ -100,6 +100,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseVarStatement()
 	case token.IF:
 		return p.parseIfStatement()
+	case token.FOR:
+		return p.parseForStatement()
 	default:
 		return p.parseExpressionStatement()
 	}
@@ -177,6 +179,74 @@ func (p *Parser) parseBlockStatement() []ast.Statement {
 	p.nextToken() // Move past Then or Else
 
 	for p.curToken.Type != token.EOF && p.curToken.Type != token.ELSE && p.curToken.Type != token.END {
+		stmt := p.parseStatement()
+		if stmt != nil {
+			statements = append(statements, stmt)
+		}
+		p.nextToken()
+	}
+
+	return statements
+}
+
+func (p *Parser) parseForStatement() *ast.ForStatement {
+	stmt := &ast.ForStatement{Token: p.curToken}
+
+	if !p.expectPeek(token.IDENT) {
+		return nil
+	}
+	stmt.VarName = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+	if !p.expectPeek(token.AS) {
+		return nil
+	}
+
+	if !p.expectPeek(token.NUMERIC) {
+		return nil
+	}
+	stmt.TypeName = p.curToken.Literal
+
+	if !p.expectPeek(token.ASSIGN) {
+		return nil
+	}
+
+	p.nextToken()
+	stmt.Start = p.parseExpression(LOWEST)
+
+	if !p.expectPeek(token.TO) {
+		return nil
+	}
+
+	p.nextToken()
+	stmt.End = p.parseExpression(LOWEST)
+
+	// Check for optional Step
+	if p.peekTokenIs(token.STEP) {
+		p.nextToken() // move to STEP
+		p.nextToken() // move past STEP
+		stmt.Step = p.parseExpression(LOWEST)
+	}
+
+	// Parse loop body statements until End
+	stmt.Body = p.parseForBlockStatement()
+
+	if p.curToken.Type != token.END {
+		p.peekError(token.END)
+		return nil
+	}
+
+	if !p.expectPeek(token.FOR) {
+		return nil
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseForBlockStatement() []ast.Statement {
+	var statements []ast.Statement
+	p.nextToken() // Move past To/Step expression end or newline
+
+	for p.curToken.Type != token.EOF && p.curToken.Type != token.END {
 		stmt := p.parseStatement()
 		if stmt != nil {
 			statements = append(statements, stmt)

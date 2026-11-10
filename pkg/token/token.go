@@ -30,6 +30,9 @@ const (
 	THEN    = "THEN"
 	ELSE    = "ELSE"
 	END     = "END"
+	FOR     = "FOR"
+	TO      = "TO"
+	STEP    = "STEP"
 )
 
 var keywords = map[string]TokenType{
@@ -41,6 +44,9 @@ var keywords = map[string]TokenType{
 	"Then":    THEN,
 	"Else":    ELSE,
 	"End":     END,
+	"For":     FOR,
+	"To":      TO,
+	"Step":    STEP,
 }
 
 func LookupIdent(ident string) TokenType {

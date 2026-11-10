@@ -51,6 +51,87 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.chunk.WriteOpcode(bytecode.OpStoreVar)
 		c.chunk.WriteByte(varIdx)
 
+	case *ast.ForStatement:
+		// 1. Evaluate Start expression
+		if err := c.Compile(n.Start); err != nil {
+			return err
+		}
+		// Allocate or lookup loop variable slot
+		varIdx, exists := c.symbolTable[n.VarName.Value]
+		if !exists {
+			varIdx = c.varCount
+			c.symbolTable[n.VarName.Value] = varIdx
+			c.varCount++
+		}
+		// Store start value into loop variable
+		c.chunk.WriteOpcode(bytecode.OpStoreVar)
+		c.chunk.WriteByte(varIdx)
+
+		// 2. Evaluate End expression and store in a hidden temporary variable slot
+		if err := c.Compile(n.End); err != nil {
+			return err
+		}
+		endVarIdx := c.varCount
+		c.varCount++
+		c.chunk.WriteOpcode(bytecode.OpStoreVar)
+		c.chunk.WriteByte(endVarIdx)
+
+		// 3. Evaluate Step expression (or default to 1) and store in a temp slot
+		stepVarIdx := c.varCount
+		c.varCount++
+		if n.Step != nil {
+			if err := c.Compile(n.Step); err != nil {
+				return err
+			}
+		} else {
+			// Push constant 1
+			litVal := value.NewNumeric(1)
+			constIdx := c.chunk.AddConstant(litVal)
+			c.chunk.WriteOpcode(bytecode.OpPushConst)
+			c.chunk.WriteByte(constIdx)
+		}
+		c.chunk.WriteOpcode(bytecode.OpStoreVar)
+		c.chunk.WriteByte(stepVarIdx)
+
+		// --- LOOP START POSITION ---
+		loopStartIndex := len(c.chunk.Code)
+
+		// Condition Check: (i <= end) -> load i, load end, compare <=
+		c.chunk.WriteOpcode(bytecode.OpLoadVar)
+		c.chunk.WriteByte(varIdx)
+		c.chunk.WriteOpcode(bytecode.OpLoadVar)
+		c.chunk.WriteByte(endVarIdx)
+
+		// Let's ensure we have a Less-Than-Or-Equal opcode (`OpLte`), or use comparison.
+		// (Let's check if OpLte is in your bytecode opcode definitions!)
+		c.chunk.WriteOpcode(bytecode.OpLte)
+
+		// Emit JumpIfFalse to exit the loop (placeholder target)
+		exitJumpPos := c.emit(bytecode.OpJumpIfFalse, 9999)
+
+		// 4. Compile loop body statements
+		for _, stmt := range n.Body {
+			if err := c.Compile(stmt); err != nil {
+				return err
+			}
+		}
+
+		// 5. Increment loop variable: i = i + step
+		c.chunk.WriteOpcode(bytecode.OpLoadVar)
+		c.chunk.WriteByte(varIdx)
+		c.chunk.WriteOpcode(bytecode.OpLoadVar)
+		c.chunk.WriteByte(stepVarIdx)
+		c.chunk.WriteOpcode(bytecode.OpAdd)
+		c.chunk.WriteOpcode(bytecode.OpStoreVar)
+		c.chunk.WriteByte(varIdx)
+
+		// 6. Jump back to loop start
+		c.emit(bytecode.OpJump, loopStartIndex)
+
+		// Patch exit jump target
+		endLoopIndex := len(c.chunk.Code)
+		c.changeOperand(exitJumpPos, endLoopIndex)
+
 	case *ast.Identifier:
 		varIdx, exists := c.symbolTable[n.Value]
 		if !exists {

@@ -172,6 +172,24 @@ func (vm *VM) Run() error {
 				vm.ip = target
 			}
 
+		case bytecode.OpLte:
+			b, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			a, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			lte := (a.Type == value.ValNumeric && b.Type == value.ValNumeric && a.Num <= b.Num)
+			var val float64
+			if lte {
+				val = 1
+			} else {
+				val = 0
+			}
+			vm.Push(value.NewNumeric(val))
+
 		default:
 			return fmt.Errorf("unknown opcode %d at instruction pointer %d", op, vm.ip-1)
 		}
