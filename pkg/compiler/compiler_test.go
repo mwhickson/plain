@@ -284,3 +284,35 @@ func TestCompilerTypeChecking(t *testing.T) {
 		}
 	}
 }
+
+func TestCompilerRecursion(t *testing.T) {
+	input := `
+	Function Countdown(n As Numeric) As Numeric
+		If n <= 0 Then
+			Return 0
+		End If
+		Return n + Countdown(n - 1)
+	End Function
+
+	Var result As Numeric = Countdown(3)
+	`
+
+	l := parser.NewLexer(input)
+	p := parser.NewParser(l)
+	program := p.ParseProgram()
+
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+
+	chunk := comp.Bytecode()
+	machine := vm.NewVM(chunk)
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+}

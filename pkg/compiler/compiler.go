@@ -80,10 +80,18 @@ func (c *Compiler) Compile(node ast.Node) error {
 		}
 
 	case *ast.FunctionStatement:
-		// 1. Emit a jump around the function body
+		// 1. Pre-register function name in symbol table so it can reference itself recursively
+		varIdx, exists := c.symbolTable[n.Name.Value]
+		if !exists {
+			varIdx = c.varCount
+			c.symbolTable[n.Name.Value] = varIdx
+			c.varCount++
+		}
+
+		// 2. Emit a jump around the function body
 		skipJumpPos := c.emit(bytecode.OpJump, 9999)
 
-		// 2. Record function start address
+		// 3. Record function start address
 		funcStartIndex := len(c.chunk.Code)
 
 		// Save outer local symbol table state
@@ -95,7 +103,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 			c.localSymbolTable[param.Name.Value] = byte(idx)
 		}
 
-		// 3. Compile function body statements
+		// 4. Compile function body statements
 		for _, stmt := range n.Body {
 			if err := c.Compile(stmt); err != nil {
 				return err
@@ -115,7 +123,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 		endFuncIndex := len(c.chunk.Code)
 		c.changeOperand(skipJumpPos, endFuncIndex)
 
-		// 4. Create function object and store it as a global constant/variable
+		// 5. Create function object and store it into its pre-allocated variable slot
 		fnObj := &value.FunctionObject{
 			Name:                  n.Name.Value,
 			InstructionStartIndex: funcStartIndex,
@@ -123,12 +131,6 @@ func (c *Compiler) Compile(node ast.Node) error {
 		}
 		constIdx := c.chunk.AddConstant(value.Value{Type: value.ValFunction, Obj: fnObj})
 
-		varIdx, exists := c.symbolTable[n.Name.Value]
-		if !exists {
-			varIdx = c.varCount
-			c.symbolTable[n.Name.Value] = varIdx
-			c.varCount++
-		}
 		c.chunk.WriteOpcode(bytecode.OpPushConst)
 		c.chunk.WriteByte(constIdx)
 		c.chunk.WriteOpcode(bytecode.OpStoreVar)
@@ -350,6 +352,16 @@ func (c *Compiler) Compile(node ast.Node) error {
 			c.chunk.WriteOpcode(bytecode.OpDiv)
 		case "==":
 			c.chunk.WriteOpcode(bytecode.OpEq)
+		case "!=":
+			c.chunk.WriteOpcode(bytecode.OpNeq)
+		case "<":
+			c.chunk.WriteOpcode(bytecode.OpLt)
+		case "<=":
+			c.chunk.WriteOpcode(bytecode.OpLte)
+		case ">":
+			c.chunk.WriteOpcode(bytecode.OpGt)
+		case ">=":
+			c.chunk.WriteOpcode(bytecode.OpGte)
 		default:
 			return fmt.Errorf("unsupported infix operator %s", n.Operator)
 		}

@@ -58,6 +58,30 @@ func (l *Lexer) NextToken() token.Token {
 		tok = token.Token{Type: token.COMMA, Literal: string(l.ch), Line: l.line}
 	case '"':
 		tok = token.Token{Type: token.STRING, Literal: l.readString(), Line: l.line}
+	case '<':
+		if l.peekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			tok = token.Token{Type: token.LTE, Literal: string(ch) + string(l.ch), Line: l.line}
+		} else {
+			tok = token.Token{Type: token.LT, Literal: string(l.ch), Line: l.line}
+		}
+	case '>':
+		if l.peekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			tok = token.Token{Type: token.GTE, Literal: string(ch) + string(l.ch), Line: l.line}
+		} else {
+			tok = token.Token{Type: token.GT, Literal: string(l.ch), Line: l.line}
+		}
+	case '!':
+		if l.peekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			tok = token.Token{Type: token.NOTEQ, Literal: string(ch) + string(l.ch), Line: l.line}
+		} else {
+			tok = token.Token{Type: token.ILLEGAL, Literal: string(l.ch), Line: l.line}
+		}
 	case 0:
 		tok.Literal = ""
 		tok.Type = token.EOF
