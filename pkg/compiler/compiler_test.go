@@ -220,7 +220,7 @@ func TestCompilerPrimitiveTypes(t *testing.T) {
 	Var numVal As Numeric = 42
 	Var strVal As String = "Hello PLAIN"
 	Var boolVal As Boolean = True
-	Var noneVal = None
+	Var noneVal As None = None
 	`
 
 	l := parser.NewLexer(input)
@@ -243,4 +243,44 @@ func TestCompilerPrimitiveTypes(t *testing.T) {
 	}
 
 	// Verify global variable slots...
+}
+
+func TestCompilerTypeChecking(t *testing.T) {
+	tests := []struct {
+		input       string
+		expectedErr string
+	}{
+		{
+			input:       `Var count As Numeric = "not a number"`,
+			expectedErr: "type mismatch for 'count': declared Numeric, got String",
+		},
+		{
+			input:       `Var name As String = True`,
+			expectedErr: "type mismatch for 'name': declared String, got Boolean",
+		},
+		{
+			input:       `Var flag = 123`,
+			expectedErr: "type required for variable 'flag' (Option Explicit)",
+		},
+	}
+
+	for _, tt := range tests {
+		l := parser.NewLexer(tt.input)
+		p := parser.NewParser(l)
+		program := p.ParseProgram()
+
+		if len(p.Errors()) > 0 {
+			t.Fatalf("parser errors for %q: %v", tt.input, p.Errors())
+		}
+
+		comp := compiler.New()
+		err := comp.Compile(program)
+		if err == nil {
+			t.Fatalf("expected compiler error for %q, got nil", tt.input)
+		}
+
+		if err.Error() != tt.expectedErr {
+			t.Fatalf("expected error %q, got %q", tt.expectedErr, err.Error())
+		}
+	}
 }

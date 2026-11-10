@@ -98,3 +98,18 @@ type FunctionObject struct {
 	InstructionStartIndex int
 	ParamCount            int
 }
+
+func (v Value) MatchesTypeName(typeName string) bool {
+	switch typeName {
+	case "Numeric":
+		return v.Type == ValNumeric
+	case "String":
+		return v.Type == ValString
+	case "Boolean":
+		return v.Type == ValBoolean
+	case "None":
+		return v.Type == ValNone
+	default:
+		return true // Custom structs/lists or untyped can pass for now
+	}
+}

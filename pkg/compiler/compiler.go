@@ -9,8 +9,9 @@ import (
 
 type Compiler struct {
 	chunk            *bytecode.Chunk
-	symbolTable      map[string]byte // Global variables
-	localSymbolTable map[string]byte // Local variables/parameters (nil if in global scope)
+	symbolTable      map[string]byte
+	variableTypes    map[string]string // Tracks declared type per variable name
+	localSymbolTable map[string]byte
 	varCount         byte
 }
 
@@ -147,10 +148,26 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.chunk.WriteOpcode(bytecode.OpReturn)
 
 	case *ast.VarStatement:
-		// 1. Compile the RHS expression (evaluates and pushes result to stack)
+		if n.TypeName == "" {
+			return fmt.Errorf("type required for variable '%s' (Option Explicit)", n.Name.Value)
+		}
+
+		// Infer type of RHS expression
+		exprType, err := c.inferExpressionType(n.Value)
+		if err != nil {
+			return err
+		}
+
+		// If we can statically determine the RHS type, enforce a match
+		if exprType != "" && exprType != n.TypeName {
+			return fmt.Errorf("type mismatch for '%s': declared %s, got %s", n.Name.Value, n.TypeName, exprType)
+		}
+
+		// 1. Compile the RHS expression
 		if err := c.Compile(n.Value); err != nil {
 			return err
 		}
+
 		// 2. Assign or lookup variable slot
 		varIdx, exists := c.symbolTable[n.Name.Value]
 		if !exists {
@@ -158,6 +175,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 			c.symbolTable[n.Name.Value] = varIdx
 			c.varCount++
 		}
+
 		// 3. Emit store instruction and variable index
 		c.chunk.WriteOpcode(bytecode.OpStoreVar)
 		c.chunk.WriteByte(varIdx)
@@ -362,4 +380,20 @@ func (c *Compiler) changeOperand(opPos int, operand int) {
 	// The operand starts immediately after the opcode
 	c.chunk.Code[opPos+1] = byte(operand & 0xff)
 	c.chunk.Code[opPos+2] = byte((operand >> 8) & 0xff)
+}
+
+func (c *Compiler) inferExpressionType(expr ast.Expression) (string, error) {
+	switch expr.(type) {
+	case *ast.IntegerLiteral:
+		return "Numeric", nil
+	case *ast.StringLiteral:
+		return "String", nil
+	case *ast.BooleanLiteral:
+		return "Boolean", nil
+	case *ast.NoneLiteral:
+		return "None", nil
+	default:
+		// For binary expressions, calls, or identifiers, we can expand or default to untyped for now
+		return "", nil
+	}
 }
