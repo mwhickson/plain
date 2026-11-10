@@ -26,6 +26,10 @@ const (
 	AS      = "AS"
 	NUMERIC = "NUMERIC"
 	PRINT   = "PRINT"
+	IF      = "IF"
+	THEN    = "THEN"
+	ELSE    = "ELSE"
+	END     = "END"
 )
 
 var keywords = map[string]TokenType{
@@ -33,6 +37,10 @@ var keywords = map[string]TokenType{
 	"As":      AS,
 	"Numeric": NUMERIC,
 	"Print":   PRINT,
+	"If":      IF,
+	"Then":    THEN,
+	"Else":    ELSE,
+	"End":     END,
 }
 
 func LookupIdent(ident string) TokenType {

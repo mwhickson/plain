@@ -98,6 +98,8 @@ func (p *Parser) parseStatement() ast.Statement {
 	switch p.curToken.Type {
 	case token.VAR:
 		return p.parseVarStatement()
+	case token.IF:
+		return p.parseIfStatement()
 	default:
 		return p.parseExpressionStatement()
 	}
@@ -135,6 +137,54 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 	}
 
 	return stmt
+}
+
+func (p *Parser) parseIfStatement() *ast.IfStatement {
+	stmt := &ast.IfStatement{Token: p.curToken}
+
+	// Parse the condition expression (e.g., total == 30)
+	p.nextToken()
+	stmt.Condition = p.parseExpression(LOWEST)
+
+	if !p.expectPeek(token.THEN) {
+		return nil
+	}
+
+	// Parse the consequence body until Else or End
+	stmt.Consequence = p.parseBlockStatement()
+
+	// Check for an optional Else block
+	if p.curToken.Type == token.ELSE {
+		stmt.Alternative = p.parseBlockStatement()
+	}
+
+	// Must terminate with End
+	if p.curToken.Type != token.END {
+		p.peekError(token.END)
+		return nil
+	}
+
+	// Followed by If (End If)
+	if !p.expectPeek(token.IF) {
+		return nil
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseBlockStatement() []ast.Statement {
+	var statements []ast.Statement
+	p.nextToken() // Move past Then or Else
+
+	for p.curToken.Type != token.EOF && p.curToken.Type != token.ELSE && p.curToken.Type != token.END {
+		stmt := p.parseStatement()
+		if stmt != nil {
+			statements = append(statements, stmt)
+		}
+		p.nextToken()
+	}
+
+	return statements
 }
 
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {

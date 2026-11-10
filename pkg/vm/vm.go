@@ -154,6 +154,24 @@ func (vm *VM) Run() error {
 		case bytecode.OpHalt:
 			return nil
 
+		case bytecode.OpJump:
+			target := int(vm.chunk.Code[vm.ip]) | int(vm.chunk.Code[vm.ip+1])<<8
+			vm.ip = target
+
+		case bytecode.OpJumpIfFalse:
+			target := int(vm.chunk.Code[vm.ip]) | int(vm.chunk.Code[vm.ip+1])<<8
+			vm.ip += 2 // advance past the operand bytes
+
+			condition, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+
+			isFalse := (condition.Type == value.ValNumeric && condition.Num == 0)
+			if isFalse {
+				vm.ip = target
+			}
+
 		default:
 			return fmt.Errorf("unknown opcode %d at instruction pointer %d", op, vm.ip-1)
 		}

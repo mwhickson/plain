@@ -59,6 +59,46 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.chunk.WriteOpcode(bytecode.OpLoadVar)
 		c.chunk.WriteByte(varIdx)
 
+	case *ast.IfStatement:
+		// 1. Compile the condition expression
+		if err := c.Compile(n.Condition); err != nil {
+			return err
+		}
+
+		// 2. Emit OpJumpIfFalse with a placeholder operand (9999)
+		jumpIfFalsePos := c.emit(bytecode.OpJumpIfFalse, 9999)
+
+		// 3. Compile the consequence block
+		for _, stmt := range n.Consequence {
+			if err := c.Compile(stmt); err != nil {
+				return err
+			}
+		}
+
+		if len(n.Alternative) > 0 {
+			// Emit OpJump to skip the alternative block after consequence runs
+			jumpPos := c.emit(bytecode.OpJump, 9999)
+
+			// Current position is where the alternative block starts
+			alternativePos := len(c.chunk.Code)
+			c.changeOperand(jumpIfFalsePos, alternativePos)
+
+			// Compile alternative block
+			for _, stmt := range n.Alternative {
+				if err := c.Compile(stmt); err != nil {
+					return err
+				}
+			}
+
+			// Patch the jumpPos to point to the end
+			endPos := len(c.chunk.Code)
+			c.changeOperand(jumpPos, endPos)
+		} else {
+			// No alternative block; patch jumpIfFalsePos to jump straight to the end
+			endPos := len(c.chunk.Code)
+			c.changeOperand(jumpIfFalsePos, endPos)
+		}
+
 	case *ast.IntegerLiteral:
 		literalVal := value.NewNumeric(n.Value)
 		constIdx := c.chunk.AddConstant(literalVal)
@@ -102,4 +142,19 @@ func (c *Compiler) Bytecode() *bytecode.Chunk {
 	// Append a clean Halt at the end of compilation
 	c.chunk.WriteOpcode(bytecode.OpHalt)
 	return c.chunk
+}
+
+func (c *Compiler) emit(op bytecode.Opcode, operand int) int {
+	pos := len(c.chunk.Code)
+	c.chunk.WriteOpcode(op)
+	// Write 16-bit operand (low byte, high byte)
+	c.chunk.WriteByte(byte(operand & 0xff))
+	c.chunk.WriteByte(byte((operand >> 8) & 0xff))
+	return pos
+}
+
+func (c *Compiler) changeOperand(opPos int, operand int) {
+	// The operand starts immediately after the opcode
+	c.chunk.Code[opPos+1] = byte(operand & 0xff)
+	c.chunk.Code[opPos+2] = byte((operand >> 8) & 0xff)
 }

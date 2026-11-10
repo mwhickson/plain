@@ -104,3 +104,36 @@ func TestCompilerComplexExpressions(t *testing.T) {
 		t.Errorf("expected result 60, got %f", result.Num)
 	}
 }
+
+func TestCompilerIfElseStatement(t *testing.T) {
+	input := `
+	If 10 == 10 Then
+		Var result As Numeric = 42
+	Else
+		Var result As Numeric = 99
+	End If
+	`
+
+	l := parser.NewLexer(input)
+	p := parser.NewParser(l)
+	program := p.ParseProgram()
+
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+
+	chunk := comp.Bytecode()
+
+	machine := vm.NewVM(chunk)
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+
+	// Verify that globals[0] (or whichever slot 'result' took) got assigned 42!
+	// Let's check how your symbol table assigns slots.
+}

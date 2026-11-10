@@ -100,3 +100,29 @@ func (ie *InfixExpression) TokenLiteral() string { return ie.Literal }
 func (ie *InfixExpression) String() string {
 	return "(" + ie.Left.String() + " " + ie.Operator + " " + ie.Right.String() + ")"
 }
+
+// IfStatement represents an if-else conditional block
+type IfStatement struct {
+	token.Token // The 'If' token
+	Condition   Expression
+	Consequence []Statement
+	Alternative []Statement
+}
+
+func (is *IfStatement) statementNode()       {}
+func (is *IfStatement) TokenLiteral() string { return is.Literal }
+func (is *IfStatement) String() string {
+	var out string
+	out += "If " + is.Condition.String() + " Then "
+	for _, s := range is.Consequence {
+		out += s.String()
+	}
+	if len(is.Alternative) > 0 {
+		out += " Else "
+		for _, s := range is.Alternative {
+			out += s.String()
+		}
+	}
+	out += " End If"
+	return out
+}
