@@ -37,10 +37,6 @@ func (vm *VM) Globals() map[byte]value.Value {
 	return vm.globals
 }
 
-func (vm *VM) Push(val value.Value) {
-	vm.stack = append(vm.stack, val)
-}
-
 func (vm *VM) Pop() (value.Value, error) {
 	length := len(vm.stack)
 	if length == 0 {
@@ -51,38 +47,16 @@ func (vm *VM) Pop() (value.Value, error) {
 	return val, nil
 }
 
+func (vm *VM) Push(val value.Value) {
+	vm.stack = append(vm.stack, val)
+}
+
 func (vm *VM) Run() error {
 	for vm.ip < len(vm.chunk.Code) {
 		op := bytecode.Opcode(vm.chunk.Code[vm.ip])
 		vm.ip++
 
 		switch op {
-		case bytecode.OpStoreVar:
-			dataIndex := vm.chunk.Code[vm.ip]
-			vm.ip++
-			val, err := vm.Pop()
-			if err != nil {
-				return err
-			}
-			vm.globals[dataIndex] = val
-
-		case bytecode.OpLoadVar:
-			dataIndex := vm.chunk.Code[vm.ip]
-			vm.ip++
-			val, exists := vm.globals[dataIndex]
-			if !exists {
-				return fmt.Errorf("undefined variable index %d", dataIndex)
-			}
-			vm.Push(val)
-
-		case bytecode.OpPushConst:
-			constIdx := vm.chunk.Code[vm.ip]
-			vm.ip++
-			if int(constIdx) >= len(vm.chunk.Constants) {
-				return fmt.Errorf("constant index %d out of bounds", constIdx)
-			}
-			vm.Push(vm.chunk.Constants[constIdx])
-
 		case bytecode.OpAdd:
 			b, err := vm.Pop()
 			if err != nil {
@@ -99,35 +73,55 @@ func (vm *VM) Run() error {
 				return fmt.Errorf("type error: '+' expects numeric operands, got %s and %s", a.Type, b.Type)
 			}
 
-		case bytecode.OpSub:
-			b, err := vm.Pop()
-			if err != nil {
-				return err
-			}
-			a, err := vm.Pop()
-			if err != nil {
-				return err
-			}
-			if a.Type == value.ValNumeric && b.Type == value.ValNumeric {
-				vm.Push(value.NewNumeric(a.Num - b.Num))
-			} else {
-				return fmt.Errorf("type error: '-' expects numeric operands")
+		case bytecode.OpCall:
+			numArgs := int(vm.chunk.Code[vm.ip])
+			vm.ip++
+
+			// Pop arguments in reverse order
+			args := make([]value.Value, numArgs)
+			for i := numArgs - 1; i >= 0; i-- {
+				arg, err := vm.Pop()
+				if err != nil {
+					return err
+				}
+				args[i] = arg
 			}
 
-		case bytecode.OpMul:
-			b, err := vm.Pop()
+			// Now pop the function object itself
+			callee, err := vm.Pop()
 			if err != nil {
 				return err
 			}
-			a, err := vm.Pop()
-			if err != nil {
-				return err
+
+			if callee.Type != value.ValFunction {
+				return fmt.Errorf("type error: can only call functions, got %s", callee.Type)
 			}
-			if a.Type == value.ValNumeric && b.Type == value.ValNumeric {
-				vm.Push(value.NewNumeric(a.Num * b.Num))
-			} else {
-				return fmt.Errorf("type error: '*' expects numeric operands")
+
+			fnObj := callee.Obj.(*value.FunctionObject)
+			if numArgs != fnObj.ParamCount {
+				return fmt.Errorf("wrong number of arguments: want %d, got %d", fnObj.ParamCount, numArgs)
 			}
+
+			// Save current frame's IP before switching
+			vm.frames[vm.frameIndex-1].ip = vm.ip
+
+			// Set base pointer for the new frame where arguments will reside on the stack
+			basePtr := len(vm.stack)
+			for _, arg := range args {
+				vm.Push(arg)
+			}
+
+			// Push new call frame
+			newFrame := Frame{
+				fn:          fnObj,
+				ip:          fnObj.InstructionStartIndex,
+				basePointer: basePtr,
+			}
+			vm.frames[vm.frameIndex] = newFrame
+			vm.frameIndex++
+
+			// Jump VM instruction pointer to function start
+			vm.ip = fnObj.InstructionStartIndex
 
 		case bytecode.OpDiv:
 			b, err := vm.Pop()
@@ -188,6 +182,22 @@ func (vm *VM) Run() error {
 				vm.ip = target
 			}
 
+		case bytecode.OpLoadLocal:
+			slotIndex := vm.chunk.Code[vm.ip]
+			vm.ip++
+			currentFrame := vm.frames[vm.frameIndex-1]
+			val := vm.stack[currentFrame.basePointer+int(slotIndex)]
+			vm.Push(val)
+
+		case bytecode.OpLoadVar:
+			dataIndex := vm.chunk.Code[vm.ip]
+			vm.ip++
+			val, exists := vm.globals[dataIndex]
+			if !exists {
+				return fmt.Errorf("undefined variable index %d", dataIndex)
+			}
+			vm.Push(val)
+
 		case bytecode.OpLte:
 			b, err := vm.Pop()
 			if err != nil {
@@ -200,55 +210,28 @@ func (vm *VM) Run() error {
 			lte := (a.Type == value.ValNumeric && b.Type == value.ValNumeric && a.Num <= b.Num)
 			vm.Push(value.NewBoolean(lte))
 
-		case bytecode.OpCall:
-			numArgs := int(vm.chunk.Code[vm.ip])
-			vm.ip++
-
-			// Pop arguments in reverse order
-			args := make([]value.Value, numArgs)
-			for i := numArgs - 1; i >= 0; i-- {
-				arg, err := vm.Pop()
-				if err != nil {
-					return err
-				}
-				args[i] = arg
-			}
-
-			// Now pop the function object itself
-			callee, err := vm.Pop()
+		case bytecode.OpMul:
+			b, err := vm.Pop()
 			if err != nil {
 				return err
 			}
-
-			if callee.Type != value.ValFunction {
-				return fmt.Errorf("type error: can only call functions, got %s", callee.Type)
+			a, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			if a.Type == value.ValNumeric && b.Type == value.ValNumeric {
+				vm.Push(value.NewNumeric(a.Num * b.Num))
+			} else {
+				return fmt.Errorf("type error: '*' expects numeric operands")
 			}
 
-			fnObj := callee.Obj.(*value.FunctionObject)
-			if numArgs != fnObj.ParamCount {
-				return fmt.Errorf("wrong number of arguments: want %d, got %d", fnObj.ParamCount, numArgs)
+		case bytecode.OpPushConst:
+			constIdx := vm.chunk.Code[vm.ip]
+			vm.ip++
+			if int(constIdx) >= len(vm.chunk.Constants) {
+				return fmt.Errorf("constant index %d out of bounds", constIdx)
 			}
-
-			// Save current frame's IP before switching
-			vm.frames[vm.frameIndex-1].ip = vm.ip
-
-			// Set base pointer for the new frame where arguments will reside on the stack
-			basePtr := len(vm.stack)
-			for _, arg := range args {
-				vm.Push(arg)
-			}
-
-			// Push new call frame
-			newFrame := Frame{
-				fn:          fnObj,
-				ip:          fnObj.InstructionStartIndex,
-				basePointer: basePtr,
-			}
-			vm.frames[vm.frameIndex] = newFrame
-			vm.frameIndex++
-
-			// Jump VM instruction pointer to function start
-			vm.ip = fnObj.InstructionStartIndex
+			vm.Push(vm.chunk.Constants[constIdx])
 
 		case bytecode.OpReturn:
 			// Pop return value
@@ -271,13 +254,6 @@ func (vm *VM) Run() error {
 			// Push return value onto the stack
 			vm.Push(retVal)
 
-		case bytecode.OpLoadLocal:
-			slotIndex := vm.chunk.Code[vm.ip]
-			vm.ip++
-			currentFrame := vm.frames[vm.frameIndex-1]
-			val := vm.stack[currentFrame.basePointer+int(slotIndex)]
-			vm.Push(val)
-
 		case bytecode.OpStoreLocal:
 			slotIndex := vm.chunk.Code[vm.ip]
 			vm.ip++
@@ -287,6 +263,30 @@ func (vm *VM) Run() error {
 			}
 			currentFrame := vm.frames[vm.frameIndex-1]
 			vm.stack[currentFrame.basePointer+int(slotIndex)] = val
+
+		case bytecode.OpStoreVar:
+			dataIndex := vm.chunk.Code[vm.ip]
+			vm.ip++
+			val, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			vm.globals[dataIndex] = val
+
+		case bytecode.OpSub:
+			b, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			a, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			if a.Type == value.ValNumeric && b.Type == value.ValNumeric {
+				vm.Push(value.NewNumeric(a.Num - b.Num))
+			} else {
+				return fmt.Errorf("type error: '-' expects numeric operands")
+			}
 
 		default:
 			return fmt.Errorf("unknown opcode %d at instruction pointer %d", op, vm.ip-1)

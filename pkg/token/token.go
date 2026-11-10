@@ -3,66 +3,60 @@ package token
 type TokenType string
 
 const (
-	EOF     = "EOF"
-	ILLEGAL = "ILLEGAL"
-
-	// Identifiers & Literals
-	IDENT  = "IDENT"
-	NUMBER = "NUMBER"
-	STRING = "STRING"
-	TRUE   = "TRUE"
-	FALSE  = "FALSE"
-
-	// Operators & Delimiters
-	ASSIGN   = "="
-	PLUS     = "+"
-	MINUS    = "-"
-	ASTERISK = "*"
-	SLASH    = "/"
-	EQ       = "=="
-	LPAREN   = "("
-	RPAREN   = ")"
-	COMMA    = ","
-	NOTEQ    = "!="
-	LT       = "<"
-	LTE      = "<="
-	GT       = ">"
-	GTE      = ">="
-
-	// Keywords
-	VAR      = "VAR"
 	AS       = "AS"
-	NUMERIC  = "NUMERIC"
-	PRINT    = "PRINT"
-	IF       = "IF"
-	THEN     = "THEN"
+	ASSIGN   = "="
+	ASTERISK = "*"
+	COMMA    = ","
 	ELSE     = "ELSE"
 	END      = "END"
+	EOF      = "EOF"
+	EQ       = "=="
+	FALSE    = "FALSE"
 	FOR      = "FOR"
-	TO       = "TO"
-	STEP     = "STEP"
 	FUNCTION = "FUNCTION"
-	RETURN   = "RETURN"
+	GT       = ">"
+	GTE      = ">="
+	IDENT    = "IDENT"
+	IF       = "IF"
+	ILLEGAL  = "ILLEGAL"
+	LPAREN   = "("
+	LT       = "<"
+	LTE      = "<="
+	MINUS    = "-"
 	NONE     = "NONE"
+	NOTEQ    = "!="
+	NUMBER   = "NUMBER"
+	NUMERIC  = "NUMERIC"
+	PLUS     = "+"
+	PRINT    = "PRINT"
+	RETURN   = "RETURN"
+	RPAREN   = ")"
+	SLASH    = "/"
+	STEP     = "STEP"
+	STRING   = "STRING"
+	THEN     = "THEN"
+	TO       = "TO"
+	TRUE     = "TRUE"
+	VAR      = "VAR"
 )
 
 var keywords = map[string]TokenType{
-	"Var":      VAR,
 	"As":       AS,
-	"Numeric":  NUMERIC,
-	"Print":    PRINT,
-	"If":       IF,
-	"Then":     THEN,
 	"Else":     ELSE,
 	"End":      END,
-	"For":      FOR,
-	"To":       TO,
-	"Step":     STEP,
-	"Function": FUNCTION,
-	"Return":   RETURN,
-	"None":     NONE,
-	"True":     TRUE,
 	"False":    FALSE,
+	"For":      FOR,
+	"Function": FUNCTION,
+	"If":       IF,
+	"None":     NONE,
+	"Numeric":  NUMERIC,
+	"Print":    PRINT,
+	"Return":   RETURN,
+	"Step":     STEP,
+	"Then":     THEN,
+	"To":       TO,
+	"True":     TRUE,
+	"Var":      VAR,
 }
 
 func LookupIdent(ident string) TokenType {

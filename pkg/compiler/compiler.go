@@ -24,6 +24,12 @@ func New() *Compiler {
 	}
 }
 
+func (c *Compiler) Bytecode() *bytecode.Chunk {
+	// Append a clean Halt at the end of compilation
+	c.chunk.WriteOpcode(bytecode.OpHalt)
+	return c.chunk
+}
+
 func (c *Compiler) Compile(node ast.Node) error {
 	switch n := node.(type) {
 	case *ast.AssignmentStatement:
@@ -46,20 +52,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.chunk.WriteOpcode(bytecode.OpPushConst)
 		c.chunk.WriteByte(constIdx)
 
-	case *ast.NoneLiteral:
-		val := value.NewNone()
-		constIdx := c.chunk.AddConstant(val)
-		c.chunk.WriteOpcode(bytecode.OpPushConst)
-		c.chunk.WriteByte(constIdx)
-
-	case *ast.Program:
-		for _, s := range n.Statements {
-			if err := c.Compile(s); err != nil {
-				return err
-			}
-		}
-
-	case *ast.CallExpression: // or whatever your AST node for calls is named
+	case *ast.CallExpression:
 		// 1. Compile the function expression (evaluates to the FunctionObject)
 		if err := c.Compile(n.Function); err != nil {
 			return err
@@ -78,109 +71,6 @@ func (c *Compiler) Compile(node ast.Node) error {
 		if err := c.Compile(n.Expression); err != nil {
 			return err
 		}
-
-	case *ast.FunctionStatement:
-		// 1. Pre-register function name in symbol table so it can reference itself recursively
-		varIdx, exists := c.symbolTable[n.Name.Value]
-		if !exists {
-			varIdx = c.varCount
-			c.symbolTable[n.Name.Value] = varIdx
-			c.varCount++
-		}
-
-		// 2. Emit a jump around the function body
-		skipJumpPos := c.emit(bytecode.OpJump, 9999)
-
-		// 3. Record function start address
-		funcStartIndex := len(c.chunk.Code)
-
-		// Save outer local symbol table state
-		oldLocalSymbolTable := c.localSymbolTable
-
-		// Initialize local symbol table for this function scope
-		c.localSymbolTable = make(map[string]byte)
-		for idx, param := range n.Parameters {
-			c.localSymbolTable[param.Name.Value] = byte(idx)
-		}
-
-		// 4. Compile function body statements
-		for _, stmt := range n.Body {
-			if err := c.Compile(stmt); err != nil {
-				return err
-			}
-		}
-
-		// Ensure every function ends with a return (defaulting to None)
-		noneConstIdx := c.chunk.AddConstant(value.NewNone())
-		c.chunk.WriteOpcode(bytecode.OpPushConst)
-		c.chunk.WriteByte(noneConstIdx)
-		c.chunk.WriteOpcode(bytecode.OpReturn)
-
-		// Restore outer local symbol table
-		c.localSymbolTable = oldLocalSymbolTable
-
-		// Patch skip jump
-		endFuncIndex := len(c.chunk.Code)
-		c.changeOperand(skipJumpPos, endFuncIndex)
-
-		// 5. Create function object and store it into its pre-allocated variable slot
-		fnObj := &value.FunctionObject{
-			Name:                  n.Name.Value,
-			InstructionStartIndex: funcStartIndex,
-			ParamCount:            len(n.Parameters),
-		}
-		constIdx := c.chunk.AddConstant(value.Value{Type: value.ValFunction, Obj: fnObj})
-
-		c.chunk.WriteOpcode(bytecode.OpPushConst)
-		c.chunk.WriteByte(constIdx)
-		c.chunk.WriteOpcode(bytecode.OpStoreVar)
-		c.chunk.WriteByte(varIdx)
-
-	case *ast.ReturnStatement:
-		if n.ReturnValue != nil {
-			if err := c.Compile(n.ReturnValue); err != nil {
-				return err
-			}
-		} else {
-			// Return None by default
-			noneConstIdx := c.chunk.AddConstant(value.NewNone())
-			c.chunk.WriteOpcode(bytecode.OpPushConst)
-			c.chunk.WriteByte(noneConstIdx)
-		}
-		c.chunk.WriteOpcode(bytecode.OpReturn)
-
-	case *ast.VarStatement:
-		if n.TypeName == "" {
-			return fmt.Errorf("type required for variable '%s' (Option Explicit)", n.Name.Value)
-		}
-
-		// Infer type of RHS expression
-		exprType, err := c.inferExpressionType(n.Value)
-		if err != nil {
-			return err
-		}
-
-		// If we can statically determine the RHS type, enforce a match
-		if exprType != "" && exprType != n.TypeName {
-			return fmt.Errorf("type mismatch for '%s': declared %s, got %s", n.Name.Value, n.TypeName, exprType)
-		}
-
-		// 1. Compile the RHS expression
-		if err := c.Compile(n.Value); err != nil {
-			return err
-		}
-
-		// 2. Assign or lookup variable slot
-		varIdx, exists := c.symbolTable[n.Name.Value]
-		if !exists {
-			varIdx = c.varCount
-			c.symbolTable[n.Name.Value] = varIdx
-			c.varCount++
-		}
-
-		// 3. Emit store instruction and variable index
-		c.chunk.WriteOpcode(bytecode.OpStoreVar)
-		c.chunk.WriteByte(varIdx)
 
 	case *ast.ForStatement:
 		// 1. Evaluate Start expression
@@ -263,6 +153,63 @@ func (c *Compiler) Compile(node ast.Node) error {
 		endLoopIndex := len(c.chunk.Code)
 		c.changeOperand(exitJumpPos, endLoopIndex)
 
+	case *ast.FunctionStatement:
+		// 1. Pre-register function name in symbol table so it can reference itself recursively
+		varIdx, exists := c.symbolTable[n.Name.Value]
+		if !exists {
+			varIdx = c.varCount
+			c.symbolTable[n.Name.Value] = varIdx
+			c.varCount++
+		}
+
+		// 2. Emit a jump around the function body
+		skipJumpPos := c.emit(bytecode.OpJump, 9999)
+
+		// 3. Record function start address
+		funcStartIndex := len(c.chunk.Code)
+
+		// Save outer local symbol table state
+		oldLocalSymbolTable := c.localSymbolTable
+
+		// Initialize local symbol table for this function scope
+		c.localSymbolTable = make(map[string]byte)
+		for idx, param := range n.Parameters {
+			c.localSymbolTable[param.Name.Value] = byte(idx)
+		}
+
+		// 4. Compile function body statements
+		for _, stmt := range n.Body {
+			if err := c.Compile(stmt); err != nil {
+				return err
+			}
+		}
+
+		// Ensure every function ends with a return (defaulting to None)
+		noneConstIdx := c.chunk.AddConstant(value.NewNone())
+		c.chunk.WriteOpcode(bytecode.OpPushConst)
+		c.chunk.WriteByte(noneConstIdx)
+		c.chunk.WriteOpcode(bytecode.OpReturn)
+
+		// Restore outer local symbol table
+		c.localSymbolTable = oldLocalSymbolTable
+
+		// Patch skip jump
+		endFuncIndex := len(c.chunk.Code)
+		c.changeOperand(skipJumpPos, endFuncIndex)
+
+		// 5. Create function object and store it into its pre-allocated variable slot
+		fnObj := &value.FunctionObject{
+			Name:                  n.Name.Value,
+			InstructionStartIndex: funcStartIndex,
+			ParamCount:            len(n.Parameters),
+		}
+		constIdx := c.chunk.AddConstant(value.Value{Type: value.ValFunction, Obj: fnObj})
+
+		c.chunk.WriteOpcode(bytecode.OpPushConst)
+		c.chunk.WriteByte(constIdx)
+		c.chunk.WriteOpcode(bytecode.OpStoreVar)
+		c.chunk.WriteByte(varIdx)
+
 	case *ast.Identifier:
 		if c.localSymbolTable != nil {
 			if localIdx, exists := c.localSymbolTable[n.Value]; exists {
@@ -318,18 +265,6 @@ func (c *Compiler) Compile(node ast.Node) error {
 			c.changeOperand(jumpIfFalsePos, endPos)
 		}
 
-	case *ast.IntegerLiteral:
-		literalVal := value.NewNumeric(n.Value)
-		constIdx := c.chunk.AddConstant(literalVal)
-		c.chunk.WriteOpcode(bytecode.OpPushConst)
-		c.chunk.WriteByte(constIdx)
-
-	case *ast.StringLiteral:
-		val := value.NewString(n.Value)
-		constIdx := c.chunk.AddConstant(val)
-		c.chunk.WriteOpcode(bytecode.OpPushConst)
-		c.chunk.WriteByte(constIdx)
-
 	case *ast.InfixExpression:
 		// Compile left-hand side
 		if err := c.Compile(n.Left); err != nil {
@@ -344,27 +279,98 @@ func (c *Compiler) Compile(node ast.Node) error {
 		switch n.Operator {
 		case "+":
 			c.chunk.WriteOpcode(bytecode.OpAdd)
-		case "-":
-			c.chunk.WriteOpcode(bytecode.OpSub)
-		case "*":
-			c.chunk.WriteOpcode(bytecode.OpMul)
 		case "/":
 			c.chunk.WriteOpcode(bytecode.OpDiv)
 		case "==":
 			c.chunk.WriteOpcode(bytecode.OpEq)
-		case "!=":
-			c.chunk.WriteOpcode(bytecode.OpNeq)
-		case "<":
-			c.chunk.WriteOpcode(bytecode.OpLt)
-		case "<=":
-			c.chunk.WriteOpcode(bytecode.OpLte)
 		case ">":
 			c.chunk.WriteOpcode(bytecode.OpGt)
 		case ">=":
 			c.chunk.WriteOpcode(bytecode.OpGte)
+		case "<":
+			c.chunk.WriteOpcode(bytecode.OpLt)
+		case "<=":
+			c.chunk.WriteOpcode(bytecode.OpLte)
+		case "*":
+			c.chunk.WriteOpcode(bytecode.OpMul)
+		case "!=":
+			c.chunk.WriteOpcode(bytecode.OpNeq)
+		case "-":
+			c.chunk.WriteOpcode(bytecode.OpSub)
 		default:
 			return fmt.Errorf("unsupported infix operator %s", n.Operator)
 		}
+
+	case *ast.IntegerLiteral:
+		literalVal := value.NewNumeric(n.Value)
+		constIdx := c.chunk.AddConstant(literalVal)
+		c.chunk.WriteOpcode(bytecode.OpPushConst)
+		c.chunk.WriteByte(constIdx)
+
+	case *ast.NoneLiteral:
+		val := value.NewNone()
+		constIdx := c.chunk.AddConstant(val)
+		c.chunk.WriteOpcode(bytecode.OpPushConst)
+		c.chunk.WriteByte(constIdx)
+
+	case *ast.Program:
+		for _, s := range n.Statements {
+			if err := c.Compile(s); err != nil {
+				return err
+			}
+		}
+
+	case *ast.ReturnStatement:
+		if n.ReturnValue != nil {
+			if err := c.Compile(n.ReturnValue); err != nil {
+				return err
+			}
+		} else {
+			// Return None by default
+			noneConstIdx := c.chunk.AddConstant(value.NewNone())
+			c.chunk.WriteOpcode(bytecode.OpPushConst)
+			c.chunk.WriteByte(noneConstIdx)
+		}
+		c.chunk.WriteOpcode(bytecode.OpReturn)
+
+	case *ast.StringLiteral:
+		val := value.NewString(n.Value)
+		constIdx := c.chunk.AddConstant(val)
+		c.chunk.WriteOpcode(bytecode.OpPushConst)
+		c.chunk.WriteByte(constIdx)
+
+	case *ast.VarStatement:
+		if n.TypeName == "" {
+			return fmt.Errorf("type required for variable '%s' (Option Explicit)", n.Name.Value)
+		}
+
+		// Infer type of RHS expression
+		exprType, err := c.inferExpressionType(n.Value)
+		if err != nil {
+			return err
+		}
+
+		// If we can statically determine the RHS type, enforce a match
+		if exprType != "" && exprType != n.TypeName {
+			return fmt.Errorf("type mismatch for '%s': declared %s, got %s", n.Name.Value, n.TypeName, exprType)
+		}
+
+		// 1. Compile the RHS expression
+		if err := c.Compile(n.Value); err != nil {
+			return err
+		}
+
+		// 2. Assign or lookup variable slot
+		varIdx, exists := c.symbolTable[n.Name.Value]
+		if !exists {
+			varIdx = c.varCount
+			c.symbolTable[n.Name.Value] = varIdx
+			c.varCount++
+		}
+
+		// 3. Emit store instruction and variable index
+		c.chunk.WriteOpcode(bytecode.OpStoreVar)
+		c.chunk.WriteByte(varIdx)
 
 	default:
 		return fmt.Errorf("unsupported AST node type: %T", n)
@@ -373,10 +379,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 	return nil
 }
 
-func (c *Compiler) Bytecode() *bytecode.Chunk {
-	// Append a clean Halt at the end of compilation
-	c.chunk.WriteOpcode(bytecode.OpHalt)
-	return c.chunk
+func (c *Compiler) changeOperand(opPos int, operand int) {
+	// The operand starts immediately after the opcode
+	c.chunk.Code[opPos+1] = byte(operand & 0xff)
+	c.chunk.Code[opPos+2] = byte((operand >> 8) & 0xff)
 }
 
 func (c *Compiler) emit(op bytecode.Opcode, operand int) int {
@@ -388,22 +394,16 @@ func (c *Compiler) emit(op bytecode.Opcode, operand int) int {
 	return pos
 }
 
-func (c *Compiler) changeOperand(opPos int, operand int) {
-	// The operand starts immediately after the opcode
-	c.chunk.Code[opPos+1] = byte(operand & 0xff)
-	c.chunk.Code[opPos+2] = byte((operand >> 8) & 0xff)
-}
-
 func (c *Compiler) inferExpressionType(expr ast.Expression) (string, error) {
 	switch expr.(type) {
-	case *ast.IntegerLiteral:
-		return "Numeric", nil
-	case *ast.StringLiteral:
-		return "String", nil
 	case *ast.BooleanLiteral:
 		return "Boolean", nil
+	case *ast.IntegerLiteral:
+		return "Numeric", nil
 	case *ast.NoneLiteral:
 		return "None", nil
+	case *ast.StringLiteral:
+		return "String", nil
 	default:
 		// For binary expressions, calls, or identifiers, we can expand or default to untyped for now
 		return "", nil

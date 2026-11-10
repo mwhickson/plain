@@ -15,6 +15,12 @@ func NewChunk() *Chunk {
 	}
 }
 
+// AddConstant adds a literal Value to the constants pool and returns its index.
+func (c *Chunk) AddConstant(val value.Value) byte {
+	c.Constants = append(c.Constants, val)
+	return byte(len(c.Constants) - 1)
+}
+
 // WriteByte appends an instruction byte to the chunk.
 func (c *Chunk) WriteByte(b byte) error {
 	c.Code = append(c.Code, b)
@@ -24,10 +30,4 @@ func (c *Chunk) WriteByte(b byte) error {
 // WriteOpcode appends an opcode byte to the chunk.
 func (c *Chunk) WriteOpcode(op Opcode) {
 	c.Code = append(c.Code, byte(op))
-}
-
-// AddConstant adds a literal Value to the constants pool and returns its index.
-func (c *Chunk) AddConstant(val value.Value) byte {
-	c.Constants = append(c.Constants, val)
-	return byte(len(c.Constants) - 1)
 }

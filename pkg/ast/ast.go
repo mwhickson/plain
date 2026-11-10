@@ -5,54 +5,64 @@ import (
 	"strings"
 )
 
-// Node represents any node in the Abstract Syntax Tree.
-type Node interface {
-	TokenLiteral() string
-	String() string
+//
+// AssignmentStatement
+//
+
+type AssignmentStatement struct {
+	token.Token
+	Name  *Identifier
+	Value Expression
 }
 
-type Statement interface {
-	Node
-	statementNode()
+func (as *AssignmentStatement) statementNode()       {}
+func (as *AssignmentStatement) TokenLiteral() string { return as.Literal }
+func (as *AssignmentStatement) String() string {
+	return as.Name.String() + " = " + as.Value.String()
 }
+
+//
+// BooleanLiteral
+//
+
+type BooleanLiteral struct {
+	token.Token
+	Value bool
+}
+
+func (bl *BooleanLiteral) expressionNode()      {}
+func (bl *BooleanLiteral) TokenLiteral() string { return bl.Literal }
+func (bl *BooleanLiteral) String() string       { return bl.Literal }
+
+//
+// CallExpression represents a function call (e.g., Add(10, 20))
+//
+
+type CallExpression struct {
+	token.Token            // The '(' token
+	Function    Expression // Identifier or expression evaluating to a function
+	Arguments   []Expression
+}
+
+func (ce *CallExpression) expressionNode()      {}
+func (ce *CallExpression) TokenLiteral() string { return ce.Literal }
+func (ce *CallExpression) String() string {
+	var out string
+	args := []string{}
+	for _, arg := range ce.Arguments {
+		args = append(args, arg.String())
+	}
+	out += ce.Function.String() + "(" + strings.Join(args, ", ") + ")"
+	return out
+}
+
+//
+// Expression
+//
 
 type Expression interface {
 	Node
 	expressionNode()
-}
-
-type Program struct {
-	Statements []Statement
-}
-
-func (p *Program) TokenLiteral() string {
-	if len(p.Statements) > 0 {
-		return p.Statements[0].TokenLiteral()
-	}
-	return ""
-}
-
-func (p *Program) String() string {
-	var out string
-	for _, s := range p.Statements {
-		out += s.String()
-	}
-	return out
-}
-
-// --- Statements ---
-
-type VarStatement struct {
-	token.Token // The 'Var' token
-	Name        *Identifier
-	TypeName    string
-	Value       Expression
-}
-
-func (vs *VarStatement) statementNode()       {}
-func (vs *VarStatement) TokenLiteral() string { return vs.Literal }
-func (vs *VarStatement) String() string {
-	return "Var " + vs.Name.String() + " As " + vs.TypeName + " = " + vs.Value.String()
 }
 
 type ExpressionStatement struct {
@@ -69,7 +79,70 @@ func (es *ExpressionStatement) String() string {
 	return ""
 }
 
-// --- Expressions ---
+//
+// ForStatement
+//
+
+type ForStatement struct {
+	token.Token
+	VarName  *Identifier
+	TypeName string
+	Start    Expression
+	End      Expression
+	Step     Expression // Optional; can be nil (defaults to 1)
+	Body     []Statement
+}
+
+func (fs *ForStatement) statementNode()       {}
+func (fs *ForStatement) TokenLiteral() string { return fs.Literal }
+func (fs *ForStatement) String() string {
+	var out string
+	out += "For " + fs.VarName.String() + " As " + fs.TypeName + " = " + fs.Start.String() + " To " + fs.End.String()
+	if fs.Step != nil {
+		out += " Step " + fs.Step.String()
+	}
+	for _, s := range fs.Body {
+		out += s.String()
+	}
+	out += " End For"
+	return out
+}
+
+//
+// FunctionStatement
+//
+
+type FunctionStatement struct {
+	token.Token
+	Name       *Identifier
+	Parameters []*Parameter
+	ReturnType string // Optional; empty if none
+	Body       []Statement
+}
+
+func (fs *FunctionStatement) statementNode()       {}
+func (fs *FunctionStatement) TokenLiteral() string { return fs.Literal }
+func (fs *FunctionStatement) String() string {
+	var out string
+	out += "Function " + fs.Name.String() + "("
+	params := []string{}
+	for _, p := range fs.Parameters {
+		params = append(params, p.String())
+	}
+	out += strings.Join(params, ", ") + ")"
+	if fs.ReturnType != "" {
+		out += " As " + fs.ReturnType
+	}
+	for _, s := range fs.Body {
+		out += s.String()
+	}
+	out += " End Function"
+	return out
+}
+
+//
+// Identifier
+//
 
 type Identifier struct {
 	token.Token
@@ -80,31 +153,12 @@ func (i *Identifier) expressionNode()      {}
 func (i *Identifier) TokenLiteral() string { return i.Literal }
 func (i *Identifier) String() string       { return i.Value }
 
-type IntegerLiteral struct {
-	token.Token
-	Value float64
-}
+//
+// IfStatement
+//
 
-func (il *IntegerLiteral) expressionNode()      {}
-func (il *IntegerLiteral) TokenLiteral() string { return il.Literal }
-func (il *IntegerLiteral) String() string       { return il.Literal }
-
-type InfixExpression struct {
-	token.Token
-	Left     Expression
-	Operator string
-	Right    Expression
-}
-
-func (ie *InfixExpression) expressionNode()      {}
-func (ie *InfixExpression) TokenLiteral() string { return ie.Literal }
-func (ie *InfixExpression) String() string {
-	return "(" + ie.Left.String() + " " + ie.Operator + " " + ie.Right.String() + ")"
-}
-
-// IfStatement represents an if-else conditional block
 type IfStatement struct {
-	token.Token // The 'If' token
+	token.Token
 	Condition   Expression
 	Consequence []Statement
 	Alternative []Statement
@@ -128,45 +182,61 @@ func (is *IfStatement) String() string {
 	return out
 }
 
-// ForStatement represents a range or iterator loop block
-type ForStatement struct {
-	token.Token // The 'For' token
-	VarName     *Identifier
-	TypeName    string
-	Start       Expression
-	End         Expression
-	Step        Expression // Optional; can be nil (defaults to 1)
-	Body        []Statement
+//
+// InfixExpression
+//
+
+type InfixExpression struct {
+	token.Token
+	Left     Expression
+	Operator string
+	Right    Expression
 }
 
-func (fs *ForStatement) statementNode()       {}
-func (fs *ForStatement) TokenLiteral() string { return fs.Literal }
-func (fs *ForStatement) String() string {
-	var out string
-	out += "For " + fs.VarName.String() + " As " + fs.TypeName + " = " + fs.Start.String() + " To " + fs.End.String()
-	if fs.Step != nil {
-		out += " Step " + fs.Step.String()
-	}
-	for _, s := range fs.Body {
-		out += s.String()
-	}
-	out += " End For"
-	return out
+func (ie *InfixExpression) expressionNode()      {}
+func (ie *InfixExpression) TokenLiteral() string { return ie.Literal }
+func (ie *InfixExpression) String() string {
+	return "(" + ie.Left.String() + " " + ie.Operator + " " + ie.Right.String() + ")"
 }
 
-type AssignmentStatement struct {
-	token.Token // The identifier token
-	Name        *Identifier
-	Value       Expression
+//
+// IntegerLiteral
+//
+
+type IntegerLiteral struct {
+	token.Token
+	Value float64
 }
 
-func (as *AssignmentStatement) statementNode()       {}
-func (as *AssignmentStatement) TokenLiteral() string { return as.Literal }
-func (as *AssignmentStatement) String() string {
-	return as.Name.String() + " = " + as.Value.String()
+func (il *IntegerLiteral) expressionNode()      {}
+func (il *IntegerLiteral) TokenLiteral() string { return il.Literal }
+func (il *IntegerLiteral) String() string       { return il.Literal }
+
+//
+// Node
+//
+
+type Node interface {
+	TokenLiteral() string
+	String() string
 }
 
-// Parameter represents a function parameter (e.g., a As Numeric)
+//
+// NoneLiteral
+//
+
+type NoneLiteral struct {
+	token.Token
+}
+
+func (nl *NoneLiteral) expressionNode()      {}
+func (nl *NoneLiteral) TokenLiteral() string { return nl.Literal }
+func (nl *NoneLiteral) String() string       { return "None" }
+
+//
+// Parameter
+//
+
 type Parameter struct {
 	token.Token
 	Name     *Identifier
@@ -179,38 +249,35 @@ func (p *Parameter) String() string {
 	return p.Name.String() + " As " + p.TypeName
 }
 
-// FunctionStatement represents a function declaration block
-type FunctionStatement struct {
-	token.Token // The 'Function' token
-	Name        *Identifier
-	Parameters  []*Parameter
-	ReturnType  string // Optional; empty if none
-	Body        []Statement
+//
+// Program
+//
+
+type Program struct {
+	Statements []Statement
 }
 
-func (fs *FunctionStatement) statementNode()       {}
-func (fs *FunctionStatement) TokenLiteral() string { return fs.Literal }
-func (fs *FunctionStatement) String() string {
+func (p *Program) TokenLiteral() string {
+	if len(p.Statements) > 0 {
+		return p.Statements[0].TokenLiteral()
+	}
+	return ""
+}
+
+func (p *Program) String() string {
 	var out string
-	out += "Function " + fs.Name.String() + "("
-	params := []string{}
-	for _, p := range fs.Parameters {
-		params = append(params, p.String())
-	}
-	out += strings.Join(params, ", ") + ")"
-	if fs.ReturnType != "" {
-		out += " As " + fs.ReturnType
-	}
-	for _, s := range fs.Body {
+	for _, s := range p.Statements {
 		out += s.String()
 	}
-	out += " End Function"
 	return out
 }
 
-// ReturnStatement represents a return statement
+//
+// ReturnStatement
+//
+
 type ReturnStatement struct {
-	token.Token // The 'Return' token
+	token.Token
 	ReturnValue Expression
 }
 
@@ -225,24 +292,18 @@ func (rs *ReturnStatement) String() string {
 	return out
 }
 
-// CallExpression represents a function call (e.g., Add(10, 20))
-type CallExpression struct {
-	token.Token            // The '(' token
-	Function    Expression // Identifier or expression evaluating to a function
-	Arguments   []Expression
+//
+// Statement
+//
+
+type Statement interface {
+	Node
+	statementNode()
 }
 
-func (ce *CallExpression) expressionNode()      {}
-func (ce *CallExpression) TokenLiteral() string { return ce.Literal }
-func (ce *CallExpression) String() string {
-	var out string
-	args := []string{}
-	for _, arg := range ce.Arguments {
-		args = append(args, arg.String())
-	}
-	out += ce.Function.String() + "(" + strings.Join(args, ", ") + ")"
-	return out
-}
+//
+// StringLiteral
+//
 
 type StringLiteral struct {
 	token.Token
@@ -253,19 +314,19 @@ func (sl *StringLiteral) expressionNode()      {}
 func (sl *StringLiteral) TokenLiteral() string { return sl.Literal }
 func (sl *StringLiteral) String() string       { return `"` + sl.Value + `"` }
 
-type BooleanLiteral struct {
+//
+// VarStatement
+//
+
+type VarStatement struct {
 	token.Token
-	Value bool
+	Name     *Identifier
+	TypeName string
+	Value    Expression
 }
 
-func (bl *BooleanLiteral) expressionNode()      {}
-func (bl *BooleanLiteral) TokenLiteral() string { return bl.Literal }
-func (bl *BooleanLiteral) String() string       { return bl.Literal }
-
-type NoneLiteral struct {
-	token.Token
+func (vs *VarStatement) statementNode()       {}
+func (vs *VarStatement) TokenLiteral() string { return vs.Literal }
+func (vs *VarStatement) String() string {
+	return "Var " + vs.Name.String() + " As " + vs.TypeName + " = " + vs.Value.String()
 }
-
-func (nl *NoneLiteral) expressionNode()      {}
-func (nl *NoneLiteral) TokenLiteral() string { return nl.Literal }
-func (nl *NoneLiteral) String() string       { return "None" }
