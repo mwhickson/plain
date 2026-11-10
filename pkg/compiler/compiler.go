@@ -39,6 +39,18 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.chunk.WriteOpcode(bytecode.OpStoreVar)
 		c.chunk.WriteByte(varIdx)
 
+	case *ast.BooleanLiteral:
+		val := value.NewBoolean(n.Value)
+		constIdx := c.chunk.AddConstant(val)
+		c.chunk.WriteOpcode(bytecode.OpPushConst)
+		c.chunk.WriteByte(constIdx)
+
+	case *ast.NoneLiteral:
+		val := value.NewNone()
+		constIdx := c.chunk.AddConstant(val)
+		c.chunk.WriteOpcode(bytecode.OpPushConst)
+		c.chunk.WriteByte(constIdx)
+
 	case *ast.Program:
 		for _, s := range n.Statements {
 			if err := c.Compile(s); err != nil {
@@ -289,6 +301,12 @@ func (c *Compiler) Compile(node ast.Node) error {
 	case *ast.IntegerLiteral:
 		literalVal := value.NewNumeric(n.Value)
 		constIdx := c.chunk.AddConstant(literalVal)
+		c.chunk.WriteOpcode(bytecode.OpPushConst)
+		c.chunk.WriteByte(constIdx)
+
+	case *ast.StringLiteral:
+		val := value.NewString(n.Value)
+		constIdx := c.chunk.AddConstant(val)
 		c.chunk.WriteOpcode(bytecode.OpPushConst)
 		c.chunk.WriteByte(constIdx)
 

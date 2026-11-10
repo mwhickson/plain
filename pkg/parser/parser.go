@@ -59,6 +59,10 @@ func NewParser(l *Lexer) *Parser {
 	p.registerPrefix(token.NUMBER, p.parseIntegerLiteral)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
+	p.registerPrefix(token.STRING, p.parseStringLiteral)
+	p.registerPrefix(token.TRUE, p.parseBooleanLiteral)
+	p.registerPrefix(token.FALSE, p.parseBooleanLiteral)
+	p.registerPrefix(token.NONE, p.parseNoneLiteral)
 
 	// Register infix parse functions
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
@@ -136,7 +140,6 @@ func (p *Parser) parseAssignmentStatement() *ast.AssignmentStatement {
 	return stmt
 }
 
-// Parses: Var total As Numeric = 10 + 20
 func (p *Parser) parseVarStatement() *ast.VarStatement {
 	stmt := &ast.VarStatement{Token: p.curToken}
 
@@ -146,14 +149,12 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 
 	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 
-	if !p.expectPeek(token.AS) {
-		return nil
+	// Optional As TypeName clause
+	if p.peekTokenIs(token.AS) {
+		p.nextToken() // move to AS
+		p.nextToken() // move to TypeName
+		stmt.TypeName = p.curToken.Literal
 	}
-
-	if !p.expectPeek(token.NUMERIC) { // Can expand to other type identifiers later
-		return nil
-	}
-	stmt.TypeName = p.curToken.Literal
 
 	if !p.expectPeek(token.ASSIGN) {
 		return nil
@@ -552,4 +553,16 @@ func (p *Parser) parseExpressionList(end token.TokenType) []ast.Expression {
 	}
 
 	return list
+}
+
+func (p *Parser) parseStringLiteral() ast.Expression {
+	return &ast.StringLiteral{Token: p.curToken, Value: p.curToken.Literal}
+}
+
+func (p *Parser) parseBooleanLiteral() ast.Expression {
+	return &ast.BooleanLiteral{Token: p.curToken, Value: p.curToken.Type == token.TRUE}
+}
+
+func (p *Parser) parseNoneLiteral() ast.Expression {
+	return &ast.NoneLiteral{Token: p.curToken}
 }

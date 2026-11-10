@@ -243,3 +243,29 @@ func (ce *CallExpression) String() string {
 	out += ce.Function.String() + "(" + strings.Join(args, ", ") + ")"
 	return out
 }
+
+type StringLiteral struct {
+	token.Token
+	Value string
+}
+
+func (sl *StringLiteral) expressionNode()      {}
+func (sl *StringLiteral) TokenLiteral() string { return sl.Literal }
+func (sl *StringLiteral) String() string       { return `"` + sl.Value + `"` }
+
+type BooleanLiteral struct {
+	token.Token
+	Value bool
+}
+
+func (bl *BooleanLiteral) expressionNode()      {}
+func (bl *BooleanLiteral) TokenLiteral() string { return bl.Literal }
+func (bl *BooleanLiteral) String() string       { return bl.Literal }
+
+type NoneLiteral struct {
+	token.Token
+}
+
+func (nl *NoneLiteral) expressionNode()      {}
+func (nl *NoneLiteral) TokenLiteral() string { return nl.Literal }
+func (nl *NoneLiteral) String() string       { return "None" }

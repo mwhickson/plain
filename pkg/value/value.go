@@ -54,11 +54,17 @@ func NewNumeric(n float64) Value {
 }
 
 func NewString(s string) Value {
-	return Value{Type: ValString, Str: s}
+	return Value{Type: ValString, Str: s} // assuming Str field exists
 }
 
 func NewBoolean(b bool) Value {
-	return Value{Type: ValBoolean, Bool: b}
+	var numVal float64
+	if b {
+		numVal = 1
+	} else {
+		numVal = 0
+	}
+	return Value{Type: ValBoolean, Num: numVal, Bool: b}
 }
 
 // String returns a human-readable representation of the Value.

@@ -156,15 +156,8 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
-			// Simple equality evaluation
-			equal := (a.Type == b.Type && a.Num == b.Num)
-			var val float64
-			if equal {
-				val = 1
-			} else {
-				val = 0
-			}
-			vm.Push(value.NewNumeric(val))
+			equal := (a.Type == b.Type && a.Num == b.Num && a.Str == b.Str)
+			vm.Push(value.NewBoolean(equal))
 
 		case bytecode.OpHalt:
 			return nil
@@ -175,14 +168,22 @@ func (vm *VM) Run() error {
 
 		case bytecode.OpJumpIfFalse:
 			target := int(vm.chunk.Code[vm.ip]) | int(vm.chunk.Code[vm.ip+1])<<8
-			vm.ip += 2 // advance past the operand bytes
+			vm.ip += 2
 
 			condition, err := vm.Pop()
 			if err != nil {
 				return err
 			}
 
-			isFalse := (condition.Type == value.ValNumeric && condition.Num == 0)
+			isFalse := false
+			if condition.Type == value.ValBoolean {
+				isFalse = (condition.Num == 0) // assuming boolean stored 0/1 in Num
+			} else if condition.Type == value.ValNumeric {
+				isFalse = (condition.Num == 0)
+			} else if condition.Type == value.ValNone {
+				isFalse = true
+			}
+
 			if isFalse {
 				vm.ip = target
 			}
@@ -197,13 +198,7 @@ func (vm *VM) Run() error {
 				return err
 			}
 			lte := (a.Type == value.ValNumeric && b.Type == value.ValNumeric && a.Num <= b.Num)
-			var val float64
-			if lte {
-				val = 1
-			} else {
-				val = 0
-			}
-			vm.Push(value.NewNumeric(val))
+			vm.Push(value.NewBoolean(lte))
 
 		case bytecode.OpCall:
 			numArgs := int(vm.chunk.Code[vm.ip])

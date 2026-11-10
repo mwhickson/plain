@@ -10,6 +10,8 @@ const (
 	IDENT  = "IDENT"
 	NUMBER = "NUMBER"
 	STRING = "STRING"
+	TRUE   = "TRUE"
+	FALSE  = "FALSE"
 
 	// Operators & Delimiters
 	ASSIGN   = "="
@@ -59,6 +61,8 @@ var keywords = map[string]TokenType{
 	"Function": FUNCTION,
 	"Return":   RETURN,
 	"None":     NONE,
+	"True":     TRUE,
+	"False":    FALSE,
 }
 
 func LookupIdent(ident string) TokenType {

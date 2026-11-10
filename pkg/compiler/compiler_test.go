@@ -214,3 +214,33 @@ func TestCompilerFunctionCall(t *testing.T) {
 		t.Errorf("expected result 30, got %f", resultVal.Num)
 	}
 }
+
+func TestCompilerPrimitiveTypes(t *testing.T) {
+	input := `
+	Var numVal As Numeric = 42
+	Var strVal As String = "Hello PLAIN"
+	Var boolVal As Boolean = True
+	Var noneVal = None
+	`
+
+	l := parser.NewLexer(input)
+	p := parser.NewParser(l)
+	program := p.ParseProgram()
+
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+
+	chunk := comp.Bytecode()
+	machine := vm.NewVM(chunk)
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+
+	// Verify global variable slots...
+}
