@@ -8,19 +8,22 @@ import (
 )
 
 type Compiler struct {
-	chunk            *bytecode.Chunk
-	symbolTable      map[string]byte
-	variableTypes    map[string]string // Tracks declared type per variable name
-	localSymbolTable map[string]byte
-	varCount         byte
+	chunk          *bytecode.Chunk
+	symbolTable    *SymbolTable
+	variableTypes  map[string]string // Tracks declared type per variable name
+	globalVarCount byte
+	localVarCount  byte
+	inFunction     bool
 }
 
 func New() *Compiler {
 	return &Compiler{
-		chunk:            bytecode.NewChunk(),
-		symbolTable:      make(map[string]byte),
-		localSymbolTable: nil,
-		varCount:         0,
+		chunk:          bytecode.NewChunk(),
+		symbolTable:    NewSymbolTable(),
+		variableTypes:  make(map[string]string),
+		globalVarCount: 0,
+		localVarCount:  0,
+		inFunction:     false,
 	}
 }
 
@@ -37,14 +40,19 @@ func (c *Compiler) Compile(node ast.Node) error {
 		if err := c.Compile(n.Value); err != nil {
 			return err
 		}
-		// 2. Lookup existing variable slot
-		varIdx, exists := c.symbolTable[n.Name.Value]
+		// 2. Lookup existing variable slot using Resolve
+		symbol, exists := c.symbolTable.Resolve(n.Name.Value)
 		if !exists {
 			return fmt.Errorf("undefined variable for assignment: %s", n.Name.Value)
 		}
-		// 3. Emit store instruction and slot index
-		c.chunk.WriteOpcode(bytecode.OpStoreVar)
-		c.chunk.WriteByte(varIdx)
+		// 3. Emit store instruction and slot index based on scope
+		if symbol.Scope == GlobalScope || !c.inFunction {
+			c.chunk.WriteOpcode(bytecode.OpStoreVar)
+			c.chunk.WriteByte(symbol.Index)
+		} else {
+			c.chunk.WriteOpcode(bytecode.OpStoreLocal)
+			c.chunk.WriteByte(symbol.Index)
+		}
 
 	case *ast.BooleanLiteral:
 		val := value.NewBoolean(n.Value)
@@ -73,93 +81,160 @@ func (c *Compiler) Compile(node ast.Node) error {
 		}
 
 	case *ast.ForStatement:
-		// 1. Evaluate Start expression
+		// 1. Enter loop block scope (prevents loop iterator leakage)
+		c.symbolTable = NewEnclosedSymbolTable(c.symbolTable)
+
+		// 2. Evaluate Start expression
 		if err := c.Compile(n.Start); err != nil {
+			c.symbolTable = c.symbolTable.Parent // Ensure scope is restored on error
 			return err
 		}
-		// Allocate or lookup loop variable slot
-		varIdx, exists := c.symbolTable[n.VarName.Value]
+
+		// Allocate or define loop variable in the current enclosed scope
+		symbol, exists := c.symbolTable.Resolve(n.VarName.Value)
 		if !exists {
-			varIdx = c.varCount
-			c.symbolTable[n.VarName.Value] = varIdx
-			c.varCount++
+			if !c.inFunction {
+				symbol = Symbol{Name: n.VarName.Value, Scope: GlobalScope, Index: c.globalVarCount}
+				c.symbolTable.Store[n.VarName.Value] = symbol
+				c.globalVarCount++
+			} else {
+				symbol = c.symbolTable.Define(n.VarName.Value, c.localVarCount)
+				c.localVarCount++
+			}
 		}
-		// Store start value into loop variable
-		c.chunk.WriteOpcode(bytecode.OpStoreVar)
-		c.chunk.WriteByte(varIdx)
 
-		// 2. Evaluate End expression and store in a hidden temporary variable slot
+		// Store start value into loop variable
+		if !c.inFunction {
+			c.chunk.WriteOpcode(bytecode.OpStoreVar)
+			c.chunk.WriteByte(symbol.Index)
+		} else {
+			c.chunk.WriteOpcode(bytecode.OpStoreLocal)
+			c.chunk.WriteByte(symbol.Index)
+		}
+
+		// 3. Evaluate End expression and store in a temporary variable slot
 		if err := c.Compile(n.End); err != nil {
+			c.symbolTable = c.symbolTable.Parent
 			return err
 		}
-		endVarIdx := c.varCount
-		c.varCount++
-		c.chunk.WriteOpcode(bytecode.OpStoreVar)
-		c.chunk.WriteByte(endVarIdx)
 
-		// 3. Evaluate Step expression (or default to 1) and store in a temp slot
-		stepVarIdx := c.varCount
-		c.varCount++
+		var endSymbol Symbol
+		if !c.inFunction {
+			endSymbol = Symbol{Name: "__end_temp", Scope: GlobalScope, Index: c.globalVarCount}
+			c.symbolTable.Store["__end_temp"] = endSymbol
+			c.globalVarCount++
+			c.chunk.WriteOpcode(bytecode.OpStoreVar)
+		} else {
+			endSymbol = c.symbolTable.Define("__end_temp", c.localVarCount)
+			c.localVarCount++
+			c.chunk.WriteOpcode(bytecode.OpStoreLocal)
+		}
+		c.chunk.WriteByte(endSymbol.Index)
+
+		// 4. Evaluate Step expression (or default to 1) and store in a temp slot
 		if n.Step != nil {
 			if err := c.Compile(n.Step); err != nil {
+				c.symbolTable = c.symbolTable.Parent
 				return err
 			}
 		} else {
-			// Push constant 1
 			litVal := value.NewNumeric(1)
 			constIdx := c.chunk.AddConstant(litVal)
 			c.chunk.WriteOpcode(bytecode.OpPushConst)
 			c.chunk.WriteByte(constIdx)
 		}
-		c.chunk.WriteOpcode(bytecode.OpStoreVar)
-		c.chunk.WriteByte(stepVarIdx)
+
+		var stepSymbol Symbol
+		if !c.inFunction {
+			stepSymbol = Symbol{Name: "__step_temp", Scope: GlobalScope, Index: c.globalVarCount}
+			c.symbolTable.Store["__step_temp"] = stepSymbol
+			c.globalVarCount++
+			c.chunk.WriteOpcode(bytecode.OpStoreVar)
+		} else {
+			stepSymbol = c.symbolTable.Define("__step_temp", c.localVarCount)
+			c.localVarCount++
+			c.chunk.WriteOpcode(bytecode.OpStoreLocal)
+		}
+		c.chunk.WriteByte(stepSymbol.Index)
 
 		// --- LOOP START POSITION ---
 		loopStartIndex := len(c.chunk.Code)
 
-		// Condition Check: (i <= end) -> load i, load end, compare <=
-		c.chunk.WriteOpcode(bytecode.OpLoadVar)
-		c.chunk.WriteByte(varIdx)
-		c.chunk.WriteOpcode(bytecode.OpLoadVar)
-		c.chunk.WriteByte(endVarIdx)
+		// Condition Check: load loop var, load end temp, compare <=
+		if !c.inFunction {
+			c.chunk.WriteOpcode(bytecode.OpLoadVar)
+		} else {
+			c.chunk.WriteOpcode(bytecode.OpLoadLocal)
+		}
+		c.chunk.WriteByte(symbol.Index)
 
-		// Let's ensure we have a Less-Than-Or-Equal opcode (`OpLte`), or use comparison.
-		// (Let's check if OpLte is in your bytecode opcode definitions!)
+		if !c.inFunction {
+			c.chunk.WriteOpcode(bytecode.OpLoadVar)
+		} else {
+			c.chunk.WriteOpcode(bytecode.OpLoadLocal)
+		}
+		c.chunk.WriteByte(endSymbol.Index)
+
 		c.chunk.WriteOpcode(bytecode.OpLte)
 
-		// Emit JumpIfFalse to exit the loop (placeholder target)
+		// Emit JumpIfFalse to exit the loop
 		exitJumpPos := c.emit(bytecode.OpJumpIfFalse, 9999)
 
-		// 4. Compile loop body statements
+		// 5. Compile loop body statements
 		for _, stmt := range n.Body {
 			if err := c.Compile(stmt); err != nil {
+				c.symbolTable = c.symbolTable.Parent
 				return err
 			}
 		}
 
-		// 5. Increment loop variable: i = i + step
-		c.chunk.WriteOpcode(bytecode.OpLoadVar)
-		c.chunk.WriteByte(varIdx)
-		c.chunk.WriteOpcode(bytecode.OpLoadVar)
-		c.chunk.WriteByte(stepVarIdx)
-		c.chunk.WriteOpcode(bytecode.OpAdd)
-		c.chunk.WriteOpcode(bytecode.OpStoreVar)
-		c.chunk.WriteByte(varIdx)
+		// 6. Increment loop variable: i = i + step
+		if !c.inFunction {
+			c.chunk.WriteOpcode(bytecode.OpLoadVar)
+		} else {
+			c.chunk.WriteOpcode(bytecode.OpLoadLocal)
+		}
+		c.chunk.WriteByte(symbol.Index)
 
-		// 6. Jump back to loop start
+		if !c.inFunction {
+			c.chunk.WriteOpcode(bytecode.OpLoadVar)
+		} else {
+			c.chunk.WriteOpcode(bytecode.OpLoadLocal)
+		}
+		c.chunk.WriteByte(stepSymbol.Index)
+
+		c.chunk.WriteOpcode(bytecode.OpAdd)
+
+		if !c.inFunction {
+			c.chunk.WriteOpcode(bytecode.OpStoreVar)
+		} else {
+			c.chunk.WriteOpcode(bytecode.OpStoreLocal)
+		}
+		c.chunk.WriteByte(symbol.Index)
+
+		// 7. Jump back to loop start
 		c.emit(bytecode.OpJump, loopStartIndex)
 
 		// Patch exit jump target
 		endLoopIndex := len(c.chunk.Code)
 		c.changeOperand(exitJumpPos, endLoopIndex)
 
+		// 8. Exit loop block scope
+		c.symbolTable = c.symbolTable.Parent
+
 	case *ast.FunctionStatement:
-		// 1. Pre-register function name in symbol table so it can reference itself recursively
-		varIdx, exists := c.symbolTable[n.Name.Value]
+		// 1. Pre-register function name in the current symbol table so it can reference itself recursively
+		funcSymbol, exists := c.symbolTable.Resolve(n.Name.Value)
 		if !exists {
-			varIdx = c.varCount
-			c.symbolTable[n.Name.Value] = varIdx
-			c.varCount++
+			// Define function slot in the outer scope
+			if !c.inFunction {
+				funcSymbol = Symbol{Name: n.Name.Value, Scope: GlobalScope, Index: c.globalVarCount}
+				c.symbolTable.Store[n.Name.Value] = funcSymbol
+				c.globalVarCount++
+			} else {
+				funcSymbol = c.symbolTable.Define(n.Name.Value, c.localVarCount)
+				c.localVarCount++
+			}
 		}
 
 		// 2. Emit a jump around the function body
@@ -168,18 +243,28 @@ func (c *Compiler) Compile(node ast.Node) error {
 		// 3. Record function start address
 		funcStartIndex := len(c.chunk.Code)
 
-		// Save outer local symbol table state
-		oldLocalSymbolTable := c.localSymbolTable
+		// 4. Enter enclosed symbol table for the function scope
+		oldSymbolTable := c.symbolTable
+		c.symbolTable = NewEnclosedSymbolTable(oldSymbolTable)
 
-		// Initialize local symbol table for this function scope
-		c.localSymbolTable = make(map[string]byte)
-		for idx, param := range n.Parameters {
-			c.localSymbolTable[param.Name.Value] = byte(idx)
+		oldInFunction := c.inFunction
+		c.inFunction = true
+
+		oldLocalVarCount := c.localVarCount
+		c.localVarCount = 0 // Function frames start local indices at 0
+
+		// Define parameters in the function's symbol table with explicit indices
+		for _, param := range n.Parameters {
+			c.symbolTable.Define(param.Name.Value, c.localVarCount)
+			c.localVarCount++
 		}
 
-		// 4. Compile function body statements
+		// 5. Compile function body statements
 		for _, stmt := range n.Body {
 			if err := c.Compile(stmt); err != nil {
+				c.symbolTable = oldSymbolTable
+				c.inFunction = oldInFunction
+				c.localVarCount = oldLocalVarCount
 				return err
 			}
 		}
@@ -190,14 +275,16 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.chunk.WriteByte(noneConstIdx)
 		c.chunk.WriteOpcode(bytecode.OpReturn)
 
-		// Restore outer local symbol table
-		c.localSymbolTable = oldLocalSymbolTable
+		// Restore outer context
+		c.symbolTable = oldSymbolTable
+		c.inFunction = oldInFunction
+		c.localVarCount = oldLocalVarCount
 
-		// Patch skip jump
+		// Patch skip jump & store function object...
 		endFuncIndex := len(c.chunk.Code)
 		c.changeOperand(skipJumpPos, endFuncIndex)
 
-		// 5. Create function object and store it into its pre-allocated variable slot
+		// 6. Create function object and store it into its variable slot
 		fnObj := &value.FunctionObject{
 			Name:                  n.Name.Value,
 			InstructionStartIndex: funcStartIndex,
@@ -207,23 +294,29 @@ func (c *Compiler) Compile(node ast.Node) error {
 
 		c.chunk.WriteOpcode(bytecode.OpPushConst)
 		c.chunk.WriteByte(constIdx)
-		c.chunk.WriteOpcode(bytecode.OpStoreVar)
-		c.chunk.WriteByte(varIdx)
+
+		if funcSymbol.Scope == GlobalScope {
+			c.chunk.WriteOpcode(bytecode.OpStoreVar)
+			c.chunk.WriteByte(funcSymbol.Index)
+		} else {
+			c.chunk.WriteOpcode(bytecode.OpStoreLocal)
+			c.chunk.WriteByte(funcSymbol.Index)
+		}
 
 	case *ast.Identifier:
-		if c.localSymbolTable != nil {
-			if localIdx, exists := c.localSymbolTable[n.Value]; exists {
-				c.chunk.WriteOpcode(bytecode.OpLoadLocal)
-				c.chunk.WriteByte(localIdx)
-				return nil
-			}
-		}
-		varIdx, exists := c.symbolTable[n.Value]
+		symbol, exists := c.symbolTable.Resolve(n.Value)
 		if !exists {
 			return fmt.Errorf("undefined variable: %s", n.Value)
 		}
-		c.chunk.WriteOpcode(bytecode.OpLoadVar)
-		c.chunk.WriteByte(varIdx)
+
+		if symbol.Scope == GlobalScope || !c.inFunction {
+			c.chunk.WriteOpcode(bytecode.OpLoadVar)
+			c.chunk.WriteByte(symbol.Index)
+		} else {
+			c.chunk.WriteOpcode(bytecode.OpLoadLocal)
+			c.chunk.WriteByte(symbol.Index)
+		}
+		return nil
 
 	case *ast.IfStatement:
 		// 1. Compile the condition expression
@@ -360,17 +453,27 @@ func (c *Compiler) Compile(node ast.Node) error {
 			return err
 		}
 
-		// 2. Assign or lookup variable slot
-		varIdx, exists := c.symbolTable[n.Name.Value]
-		if !exists {
-			varIdx = c.varCount
-			c.symbolTable[n.Name.Value] = varIdx
-			c.varCount++
+		// 2. Define variable in the current symbol table scope with explicit index
+		var symbol Symbol
+		if !c.inFunction {
+			symbol, exists := c.symbolTable.Resolve(n.Name.Value)
+			if !exists {
+				symbol = Symbol{
+					Name:  n.Name.Value,
+					Scope: GlobalScope,
+					Index: c.globalVarCount,
+				}
+				c.symbolTable.Store[n.Name.Value] = symbol
+				c.globalVarCount++
+			}
+			c.chunk.WriteOpcode(bytecode.OpStoreVar)
+			c.chunk.WriteByte(symbol.Index)
+		} else {
+			symbol = c.symbolTable.Define(n.Name.Value, c.localVarCount)
+			c.localVarCount++
+			c.chunk.WriteOpcode(bytecode.OpStoreLocal)
+			c.chunk.WriteByte(symbol.Index)
 		}
-
-		// 3. Emit store instruction and variable index
-		c.chunk.WriteOpcode(bytecode.OpStoreVar)
-		c.chunk.WriteByte(varIdx)
 
 	default:
 		return fmt.Errorf("unsupported AST node type: %T", n)
