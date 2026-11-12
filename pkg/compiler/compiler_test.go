@@ -316,3 +316,90 @@ func TestCompilerRecursion(t *testing.T) {
 		t.Fatalf("vm execution error: %v", err)
 	}
 }
+
+func TestCompilerFibonacciRecursion(t *testing.T) {
+	input := `
+	Function Fib(n As Numeric) As Numeric
+		If n <= 1 Then
+			Return n
+		End If
+		Return Fib(n - 1) + Fib(n - 2)
+	End Function
+
+	Var result As Numeric = Fib(6)
+	`
+
+	l := parser.NewLexer(input)
+	p := parser.NewParser(l)
+	program := p.ParseProgram()
+
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+
+	chunk := comp.Bytecode()
+	machine := vm.NewVM(chunk)
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+
+	resultVal, exists := machine.Globals()[1] // Assuming result slot
+	if !exists {
+		t.Fatalf("expected variable 'result' in globals")
+	}
+	if resultVal.Num != 8 {
+		t.Errorf("expected Fib(6) to be 8, got %f", resultVal.Num)
+	}
+}
+
+func TestCompilerMutualRecursion(t *testing.T) {
+	input := `
+	Function IsEven(n As Numeric) As Boolean
+		If n == 0 Then
+			Return True
+		End If
+		Return IsOdd(n - 1)
+	End Function
+
+	Function IsOdd(n As Numeric) As Boolean
+		If n == 0 Then
+			Return False
+		End If
+		Return IsEven(n - 1)
+	End Function
+
+	Var result As Boolean = IsEven(4)
+	`
+
+	l := parser.NewLexer(input)
+	p := parser.NewParser(l)
+	program := p.ParseProgram()
+
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+
+	chunk := comp.Bytecode()
+	machine := vm.NewVM(chunk)
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+
+	resultVal, exists := machine.Globals()[2] // Assuming result slot
+	if !exists {
+		t.Fatalf("expected variable 'result' in globals")
+	}
+	if !resultVal.Bool {
+		t.Errorf("expected IsEven(4) to be True, got %v", resultVal.Bool)
+	}
+}

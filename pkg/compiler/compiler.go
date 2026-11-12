@@ -407,6 +407,25 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.chunk.WriteByte(constIdx)
 
 	case *ast.Program:
+		// 1. Pre-scan pass: register all top-level functions first so they can mutually recurse
+		for _, s := range n.Statements {
+			if fnStmt, ok := s.(*ast.FunctionStatement); ok {
+				_, exists := c.symbolTable.Resolve(fnStmt.Name.Value)
+				if !exists {
+					if !c.inFunction {
+						symbol := Symbol{
+							Name:  fnStmt.Name.Value,
+							Scope: GlobalScope,
+							Index: c.globalVarCount,
+						}
+						c.symbolTable.Store[fnStmt.Name.Value] = symbol
+						c.globalVarCount++
+					}
+				}
+			}
+		}
+
+		// 2. Compilation pass: compile all statements normally now that all functions are known
 		for _, s := range n.Statements {
 			if err := c.Compile(s); err != nil {
 				return err
