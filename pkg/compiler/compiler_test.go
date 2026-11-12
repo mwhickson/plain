@@ -403,3 +403,46 @@ func TestCompilerMutualRecursion(t *testing.T) {
 		t.Errorf("expected IsEven(4) to be True, got %v", resultVal.Bool)
 	}
 }
+
+func TestCompilerClosures(t *testing.T) {
+	input := `
+	Function MakeAdder(x As Numeric) As Function
+		Function Add(y As Numeric) As Numeric
+			Return x + y
+		End Function
+		Return Add
+	End Function
+
+	Var addFive As Function = MakeAdder(5)
+	Var result As Numeric = addFive(10)
+	`
+
+	l := parser.NewLexer(input)
+	p := parser.NewParser(l)
+	program := p.ParseProgram()
+
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+
+	chunk := comp.Bytecode()
+	machine := vm.NewVM(chunk)
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+
+	// Verify that 'result' holds 15 in globals
+	// Slot layout: 0: MakeAdder, 1: addFive, 2: result
+	resultVal, exists := machine.Globals()[2]
+	if !exists {
+		t.Fatalf("expected variable 'result' in globals")
+	}
+	if resultVal.Num != 15 {
+		t.Errorf("expected result 15, got %f", resultVal.Num)
+	}
+}

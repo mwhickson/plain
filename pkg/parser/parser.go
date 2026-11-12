@@ -295,7 +295,7 @@ func (p *Parser) parseFunctionStatement() *ast.FunctionStatement {
 	// Optional Return Type: As TypeName
 	if p.peekTokenIs(token.AS) {
 		p.nextToken() // move to AS
-		if p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.NUMERIC) || p.peekTokenIs(token.STRING) {
+		if p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.NUMERIC) || p.peekTokenIs(token.STRING) || p.peekTokenIs(token.FUNCTION) {
 			p.nextToken()
 			stmt.ReturnType = p.curToken.Literal
 		} else {

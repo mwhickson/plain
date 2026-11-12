@@ -233,7 +233,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 				c.globalVarCount++
 			} else {
 				funcSymbol = c.symbolTable.Define(n.Name.Value, c.localVarCount)
-				c.localVarCount++
+				c.localVarCount++ // <--- Ensure local variable slot count increments here!
 			}
 		}
 
@@ -275,6 +275,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.chunk.WriteByte(noneConstIdx)
 		c.chunk.WriteOpcode(bytecode.OpReturn)
 
+		// Capture the inner symbol table and local var count before restoring the outer context!
+		funcSymbolTable := c.symbolTable
+		functionLocalVarCount := c.localVarCount
+
 		// Restore outer context
 		c.symbolTable = oldSymbolTable
 		c.inFunction = oldInFunction
@@ -284,17 +288,42 @@ func (c *Compiler) Compile(node ast.Node) error {
 		endFuncIndex := len(c.chunk.Code)
 		c.changeOperand(skipJumpPos, endFuncIndex)
 
-		// 6. Create function object and store it into its variable slot
+		// 6. Check if the function captured any free variables using the inner symbol table
+		freeSymbols := funcSymbolTable.FreeSymbols
+		numFree := len(freeSymbols)
+
+		// Create function object
 		fnObj := &value.FunctionObject{
 			Name:                  n.Name.Value,
 			InstructionStartIndex: funcStartIndex,
 			ParamCount:            len(n.Parameters),
+			LocalVarCount:         int(functionLocalVarCount),
 		}
 		constIdx := c.chunk.AddConstant(value.Value{Type: value.ValFunction, Obj: fnObj})
 
-		c.chunk.WriteOpcode(bytecode.OpPushConst)
-		c.chunk.WriteByte(constIdx)
+		if numFree > 0 {
+			// For each free symbol, emit instructions to load it from the enclosing scope
+			for _, s := range freeSymbols {
+				if s.Scope == LocalScope {
+					c.chunk.WriteOpcode(bytecode.OpLoadLocal)
+					c.chunk.WriteByte(s.Index)
+				} else if s.Scope == FreeScope {
+					c.chunk.WriteOpcode(bytecode.OpLoadFree)
+					c.chunk.WriteByte(s.Index)
+				}
+			}
 
+			// Emit OpClosure taking the function constant index and free count
+			c.chunk.WriteOpcode(bytecode.OpClosure)
+			c.chunk.WriteByte(constIdx)
+			c.chunk.WriteByte(byte(numFree))
+		} else {
+			// Standard function (no free variables)
+			c.chunk.WriteOpcode(bytecode.OpPushConst)
+			c.chunk.WriteByte(constIdx)
+		}
+
+		// Store the resulting function/closure into its variable slot
 		if funcSymbol.Scope == GlobalScope {
 			c.chunk.WriteOpcode(bytecode.OpStoreVar)
 			c.chunk.WriteByte(funcSymbol.Index)
@@ -312,8 +341,11 @@ func (c *Compiler) Compile(node ast.Node) error {
 		if symbol.Scope == GlobalScope || !c.inFunction {
 			c.chunk.WriteOpcode(bytecode.OpLoadVar)
 			c.chunk.WriteByte(symbol.Index)
-		} else {
+		} else if symbol.Scope == LocalScope {
 			c.chunk.WriteOpcode(bytecode.OpLoadLocal)
+			c.chunk.WriteByte(symbol.Index)
+		} else if symbol.Scope == FreeScope {
+			c.chunk.WriteOpcode(bytecode.OpLoadFree)
 			c.chunk.WriteByte(symbol.Index)
 		}
 		return nil

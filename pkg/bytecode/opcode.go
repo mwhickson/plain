@@ -8,12 +8,14 @@ const (
 
 	OpAdd
 	OpCall
+	OpClosure
 	OpDiv
 	OpEq
 	OpGt
 	OpGte
 	OpJump
 	OpJumpIfFalse
+	OpLoadFree
 	OpLoadLocal
 	OpLoadVar
 	OpLt
@@ -45,6 +47,8 @@ func (o Opcode) String() string {
 		return "OP_ADD"
 	case OpCall:
 		return "OP_CALL"
+	case OpClosure:
+		return "OP_CLOSURE"
 	case OpDiv:
 		return "OP_DIV"
 	case OpEq:
@@ -57,6 +61,8 @@ func (o Opcode) String() string {
 		return "OP_JUMP"
 	case OpJumpIfFalse:
 		return "OP_JUMP_IF_FALSE"
+	case OpLoadFree:
+		return "OP_LOAD_FREE"
 	case OpLoadLocal:
 		return "OP_LOAD_LOCAL"
 	case OpLoadVar:

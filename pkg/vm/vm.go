@@ -26,7 +26,7 @@ func NewVM(chunk *bytecode.Chunk) *VM {
 	}
 	// Setup root frame for main script
 	vm.frames[0] = Frame{
-		fn:          nil,
+		closure:     nil,
 		ip:          0,
 		basePointer: 0,
 	}
@@ -87,19 +87,25 @@ func (vm *VM) Run() error {
 				args[i] = arg
 			}
 
-			// Now pop the function object itself
+			// Now pop the callee itself
 			callee, err := vm.Pop()
 			if err != nil {
 				return err
 			}
 
-			if callee.Type != value.ValFunction {
-				return fmt.Errorf("type error: can only call functions, got %s", callee.Type)
+			var closure *value.ClosureObject
+			switch callee.Type {
+			case value.ValClosure:
+				closure = callee.Obj.(*value.ClosureObject)
+			case value.ValFunction:
+				fnObj := callee.Obj.(*value.FunctionObject)
+				closure = &value.ClosureObject{Fn: fnObj, Free: nil}
+			default:
+				return fmt.Errorf("type error: can only call functions or closures, got %s", callee.Type)
 			}
 
-			fnObj := callee.Obj.(*value.FunctionObject)
-			if numArgs != fnObj.ParamCount {
-				return fmt.Errorf("wrong number of arguments: want %d, got %d", fnObj.ParamCount, numArgs)
+			if numArgs != closure.Fn.ParamCount {
+				return fmt.Errorf("wrong number of arguments: want %d, got %d", closure.Fn.ParamCount, numArgs)
 			}
 
 			// Save current frame's IP before switching
@@ -110,18 +116,50 @@ func (vm *VM) Run() error {
 			for _, arg := range args {
 				vm.Push(arg)
 			}
+			// Ensure stack has space allocated for all local variables (temps / local functions)
+			for i := len(args); i < closure.Fn.LocalVarCount; i++ {
+				vm.Push(value.NewNone())
+			}
 
 			// Push new call frame
 			newFrame := Frame{
-				fn:          fnObj,
-				ip:          fnObj.InstructionStartIndex,
+				closure:     closure,
+				ip:          closure.Fn.InstructionStartIndex,
 				basePointer: basePtr,
 			}
 			vm.frames[vm.frameIndex] = newFrame
 			vm.frameIndex++
 
 			// Jump VM instruction pointer to function start
-			vm.ip = fnObj.InstructionStartIndex
+			vm.ip = closure.Fn.InstructionStartIndex
+
+		case bytecode.OpClosure:
+			constIdx := vm.chunk.Code[vm.ip]
+			vm.ip++
+			numFree := vm.chunk.Code[vm.ip]
+			vm.ip++
+
+			if int(constIdx) >= len(vm.chunk.Constants) {
+				return fmt.Errorf("constant index %d out of bounds", constIdx)
+			}
+
+			fnVal := vm.chunk.Constants[constIdx]
+			fnObj, ok := fnVal.Obj.(*value.FunctionObject)
+			if !ok {
+				return fmt.Errorf("constant %d is not a function object", constIdx)
+			}
+
+			freeValues := make([]value.Value, numFree)
+			for i := int(numFree) - 1; i >= 0; i-- {
+				val, err := vm.Pop()
+				if err != nil {
+					return err
+				}
+				freeValues[i] = val
+			}
+
+			closure := value.NewClosure(fnObj, freeValues)
+			vm.Push(closure)
 
 		case bytecode.OpDiv:
 			b, err := vm.Pop()
@@ -181,6 +219,16 @@ func (vm *VM) Run() error {
 			if isFalse {
 				vm.ip = target
 			}
+
+		case bytecode.OpLoadFree:
+			freeIndex := vm.chunk.Code[vm.ip]
+			vm.ip++
+			currentFrame := vm.frames[vm.frameIndex-1]
+			if currentFrame.closure == nil {
+				return fmt.Errorf("no active closure in root frame")
+			}
+			val := currentFrame.closure.Free[int(freeIndex)]
+			vm.Push(val)
 
 		case bytecode.OpLoadLocal:
 			slotIndex := vm.chunk.Code[vm.ip]
