@@ -7,12 +7,14 @@ const (
 	OpNop Opcode = iota
 
 	OpAdd
+	OpBuildList
 	OpCall
 	OpClosure
 	OpDiv
 	OpEq
 	OpGt
 	OpGte
+	OpIndex
 	OpJump
 	OpJumpIfFalse
 	OpLoadFree
@@ -45,6 +47,8 @@ func (o Opcode) String() string {
 		return "OP_NOP"
 	case OpAdd:
 		return "OP_ADD"
+	case OpBuildList:
+		return "OP_BUILD_LIST"
 	case OpCall:
 		return "OP_CALL"
 	case OpClosure:
@@ -57,6 +61,8 @@ func (o Opcode) String() string {
 		return "OP_GT"
 	case OpGte:
 		return "OP_GTE"
+	case OpIndex:
+		return "OP_INDEX"
 	case OpJump:
 		return "OP_JUMP"
 	case OpJumpIfFalse:

@@ -47,6 +47,8 @@ func (l *Lexer) NextToken() token.Token {
 		} else {
 			tok = token.Token{Type: token.GT, Literal: string(l.ch), Line: l.line}
 		}
+	case '[':
+		tok = token.Token{Type: token.LBRACKET, Literal: string(l.ch), Line: l.line}
 	case '(':
 		tok = token.Token{Type: token.LPAREN, Literal: string(l.ch), Line: l.line}
 	case '<':
@@ -69,6 +71,8 @@ func (l *Lexer) NextToken() token.Token {
 		}
 	case '+':
 		tok = token.Token{Type: token.PLUS, Literal: string(l.ch), Line: l.line}
+	case ']':
+		tok = token.Token{Type: token.RBRACKET, Literal: string(l.ch), Line: l.line}
 	case ')':
 		tok = token.Token{Type: token.RPAREN, Literal: string(l.ch), Line: l.line}
 	case '/':

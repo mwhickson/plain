@@ -183,6 +183,22 @@ func (is *IfStatement) String() string {
 }
 
 //
+// IndexExpression represents an index access like items[0]
+//
+
+type IndexExpression struct {
+	token.Token // The '[' token
+	Left        Expression
+	Index       Expression
+}
+
+func (ie *IndexExpression) expressionNode()      {}
+func (ie *IndexExpression) TokenLiteral() string { return ie.Literal }
+func (ie *IndexExpression) String() string {
+	return "(" + ie.Left.String() + "[" + ie.Index.String() + "])"
+}
+
+//
 // InfixExpression
 //
 
@@ -211,6 +227,27 @@ type IntegerLiteral struct {
 func (il *IntegerLiteral) expressionNode()      {}
 func (il *IntegerLiteral) TokenLiteral() string { return il.Literal }
 func (il *IntegerLiteral) String() string       { return il.Literal }
+
+//
+// ListLiteral
+//
+
+type ListLiteral struct {
+	token.Token // The '[' token
+	Elements    []Expression
+}
+
+func (ll *ListLiteral) expressionNode()      {}
+func (ll *ListLiteral) TokenLiteral() string { return ll.Literal }
+func (ll *ListLiteral) String() string {
+	var out string
+	elements := []string{}
+	for _, el := range ll.Elements {
+		elements = append(elements, el.String())
+	}
+	out += "[" + strings.Join(elements, ", ") + "]"
+	return out
+}
 
 //
 // Node

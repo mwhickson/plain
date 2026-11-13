@@ -390,6 +390,15 @@ func (c *Compiler) Compile(node ast.Node) error {
 			c.changeOperand(jumpIfFalsePos, endPos)
 		}
 
+	case *ast.IndexExpression:
+		if err := c.Compile(n.Left); err != nil {
+			return err
+		}
+		if err := c.Compile(n.Index); err != nil {
+			return err
+		}
+		c.chunk.WriteOpcode(bytecode.OpIndex)
+
 	case *ast.InfixExpression:
 		// Compile left-hand side
 		if err := c.Compile(n.Left); err != nil {
@@ -431,6 +440,15 @@ func (c *Compiler) Compile(node ast.Node) error {
 		constIdx := c.chunk.AddConstant(literalVal)
 		c.chunk.WriteOpcode(bytecode.OpPushConst)
 		c.chunk.WriteByte(constIdx)
+
+	case *ast.ListLiteral:
+		for _, el := range n.Elements {
+			if err := c.Compile(el); err != nil {
+				return err
+			}
+		}
+		c.chunk.WriteOpcode(bytecode.OpBuildList)
+		c.chunk.WriteByte(byte(len(n.Elements)))
 
 	case *ast.NoneLiteral:
 		val := value.NewNone()

@@ -446,3 +446,28 @@ func TestCompilerClosures(t *testing.T) {
 		t.Errorf("expected result 15, got %f", resultVal.Num)
 	}
 }
+
+func TestCompilerLists(t *testing.T) {
+	input := `
+	Var items As List = ["Apple", "Banana", "Cherry"]
+	Var first As String = items[0]
+	`
+	l := parser.NewLexer(input)
+	p := parser.NewParser(l)
+	program := p.ParseProgram()
+
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+
+	chunk := comp.Bytecode()
+	machine := vm.NewVM(chunk)
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+}

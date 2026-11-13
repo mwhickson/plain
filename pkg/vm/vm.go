@@ -73,6 +73,26 @@ func (vm *VM) Run() error {
 				return fmt.Errorf("type error: '+' expects numeric operands, got %s and %s", a.Type, b.Type)
 			}
 
+		case bytecode.OpBuildList:
+			numElements := int(vm.chunk.Code[vm.ip])
+			vm.ip++
+
+			elements := make([]value.Value, numElements)
+			// Pop elements in reverse order since they were pushed sequentially
+			for i := numElements - 1; i >= 0; i-- {
+				val, err := vm.Pop()
+				if err != nil {
+					return err
+				}
+				elements[i] = val
+			}
+
+			listVal := value.Value{
+				Type: value.ValList,
+				Obj:  elements,
+			}
+			vm.Push(listVal)
+
 		case bytecode.OpCall:
 			numArgs := int(vm.chunk.Code[vm.ip])
 			vm.ip++
@@ -193,6 +213,30 @@ func (vm *VM) Run() error {
 
 		case bytecode.OpHalt:
 			return nil
+
+		case bytecode.OpIndex:
+			indexVal, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			leftVal, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+
+			if leftVal.Type == value.ValList {
+				if indexVal.Type != value.ValNumeric {
+					return fmt.Errorf("type error: list index must be numeric, got %s", indexVal.Type)
+				}
+				list := leftVal.Obj.([]value.Value)
+				idx := int(indexVal.Num)
+				if idx < 0 || idx >= len(list) {
+					return fmt.Errorf("index out of bounds: %d (length %d)", idx, len(list))
+				}
+				vm.Push(list[idx])
+			} else {
+				return fmt.Errorf("type error: indexing unsupported for type %s", leftVal.Type)
+			}
 
 		case bytecode.OpJump:
 			target := int(vm.chunk.Code[vm.ip]) | int(vm.chunk.Code[vm.ip+1])<<8

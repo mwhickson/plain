@@ -1,6 +1,9 @@
 package value
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 const (
 	ValNone ValueType = iota
@@ -100,7 +103,12 @@ func (v Value) String() string {
 		fn := v.Obj.(*FunctionObject)
 		return fmt.Sprintf("<fn %s>", fn.Name)
 	case ValList:
-		return "[List]"
+		list := v.Obj.([]Value)
+		elements := []string{}
+		for _, el := range list {
+			elements = append(elements, el.String())
+		}
+		return "[" + strings.Join(elements, ", ") + "]"
 	case ValNumeric:
 		return fmt.Sprintf("%g", v.Num)
 	case ValString:
