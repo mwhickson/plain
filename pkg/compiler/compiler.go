@@ -482,6 +482,16 @@ func (c *Compiler) Compile(node ast.Node) error {
 			}
 		}
 
+	case *ast.PropertyAccessExpression:
+		if err := c.Compile(n.Left); err != nil {
+			return err
+		}
+		// Add property name as a constant in the constant pool
+		propNameVal := value.NewString(n.Property.Value)
+		constIdx := c.chunk.AddConstant(propNameVal)
+		c.chunk.WriteOpcode(bytecode.OpGetProperty)
+		c.chunk.WriteByte(constIdx)
+
 	case *ast.ReturnStatement:
 		if n.ReturnValue != nil {
 			if err := c.Compile(n.ReturnValue); err != nil {
@@ -500,6 +510,11 @@ func (c *Compiler) Compile(node ast.Node) error {
 		constIdx := c.chunk.AddConstant(val)
 		c.chunk.WriteOpcode(bytecode.OpPushConst)
 		c.chunk.WriteByte(constIdx)
+
+	case *ast.StructStatement:
+		// Struct definitions act as types/schemas; for now we can treat them as declarations
+		// that don't emit runtime executable instructions (or store struct schema metadata if needed).
+		return nil
 
 	case *ast.VarStatement:
 		if n.TypeName == "" {

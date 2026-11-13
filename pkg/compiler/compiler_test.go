@@ -471,3 +471,26 @@ func TestCompilerLists(t *testing.T) {
 		t.Fatalf("vm execution error: %v", err)
 	}
 }
+
+func TestCompilerStructs(t *testing.T) {
+	input := `
+	Struct Vector2D
+		X As Numeric
+		Y As Numeric
+	End Struct
+	`
+	// Since structs currently store field definitions, we can also test creating a struct instance or accessing properties if supported,
+	// or verify that the struct statement compiles without error.
+	l := parser.NewLexer(input)
+	p := parser.NewParser(l)
+	program := p.ParseProgram()
+
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+}

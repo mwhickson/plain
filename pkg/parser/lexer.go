@@ -69,6 +69,8 @@ func (l *Lexer) NextToken() token.Token {
 		} else {
 			tok = token.Token{Type: token.ILLEGAL, Literal: string(l.ch), Line: l.line}
 		}
+	case '.':
+		tok = token.Token{Type: token.PERIOD, Literal: string(l.ch), Line: l.line}
 	case '+':
 		tok = token.Token{Type: token.PLUS, Literal: string(l.ch), Line: l.line}
 	case ']':

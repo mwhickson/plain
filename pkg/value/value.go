@@ -114,7 +114,12 @@ func (v Value) String() string {
 	case ValString:
 		return v.Str
 	case ValStruct:
-		return "[Struct]"
+		m := v.Obj.(map[string]Value)
+		pairs := []string{}
+		for k, val := range m {
+			pairs = append(pairs, k+": "+val.String())
+		}
+		return "{" + strings.Join(pairs, ", ") + "}"
 	default:
 		return "Unknown"
 	}

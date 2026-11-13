@@ -211,6 +211,29 @@ func (vm *VM) Run() error {
 			equal := (a.Type == b.Type && a.Num == b.Num && a.Str == b.Str)
 			vm.Push(value.NewBoolean(equal))
 
+		case bytecode.OpGetProperty:
+			constIdx := vm.chunk.Code[vm.ip]
+			vm.ip++
+
+			propNameVal := vm.chunk.Constants[constIdx]
+			propName := propNameVal.Str
+
+			targetVal, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+
+			if targetVal.Type == value.ValStruct {
+				m := targetVal.Obj.(map[string]value.Value)
+				val, exists := m[propName]
+				if !exists {
+					return fmt.Errorf("struct has no property '%s'", propName)
+				}
+				vm.Push(val)
+			} else {
+				return fmt.Errorf("type error: property access '.' unsupported for type %s", targetVal.Type)
+			}
+
 		case bytecode.OpHalt:
 			return nil
 

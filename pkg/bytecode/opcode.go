@@ -12,6 +12,7 @@ const (
 	OpClosure
 	OpDiv
 	OpEq
+	OpGetProperty
 	OpGt
 	OpGte
 	OpIndex
@@ -57,6 +58,8 @@ func (o Opcode) String() string {
 		return "OP_DIV"
 	case OpEq:
 		return "OP_EQ"
+	case OpGetProperty:
+		return "OP_GET_PROPERTY"
 	case OpGt:
 		return "OP_GT"
 	case OpGte:

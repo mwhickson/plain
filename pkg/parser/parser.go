@@ -16,7 +16,7 @@ const (
 	SUM         // + or -
 	PRODUCT     // * or /
 	PREFIX      // -X or !X
-	CALL        // myFunction(X) or items[X]
+	CALL        // myFunction(X), items[X], v.X
 )
 
 var precedences = map[token.TokenType]int{
@@ -32,6 +32,7 @@ var precedences = map[token.TokenType]int{
 	token.ASTERISK: PRODUCT,
 	token.LPAREN:   CALL,
 	token.LBRACKET: CALL,
+	token.PERIOD:   CALL,
 }
 
 type (
@@ -63,13 +64,13 @@ func NewParser(l *Lexer) *Parser {
 	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
 	p.registerPrefix(token.FALSE, p.parseBooleanLiteral)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
+	p.registerPrefix(token.LBRACKET, p.parseListLiteral)
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
 	p.registerPrefix(token.NONE, p.parseNoneLiteral)
 	p.registerPrefix(token.NUMBER, p.parseIntegerLiteral)
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
 	p.registerPrefix(token.TRUE, p.parseBooleanLiteral)
-	p.registerPrefix(token.LBRACKET, p.parseListLiteral)
 
 	// Register infix parse functions
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
@@ -78,14 +79,15 @@ func NewParser(l *Lexer) *Parser {
 	p.registerInfix(token.EQ, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
 	p.registerInfix(token.GTE, p.parseInfixExpression)
+	p.registerInfix(token.LBRACKET, p.parseIndexExpression)
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
 	p.registerInfix(token.LT, p.parseInfixExpression)
 	p.registerInfix(token.LTE, p.parseInfixExpression)
 	p.registerInfix(token.MINUS, p.parseInfixExpression)
 	p.registerInfix(token.NOTEQ, p.parseInfixExpression)
+	p.registerInfix(token.PERIOD, p.parsePropertyAccessExpression)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
 	p.registerInfix(token.SLASH, p.parseInfixExpression)
-	p.registerInfix(token.LBRACKET, p.parseIndexExpression)
 
 	return p
 }
@@ -477,6 +479,17 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 	return nil // Expand later if needed for PoC
 }
 
+func (p *Parser) parsePropertyAccessExpression(left ast.Expression) ast.Expression {
+	exp := &ast.PropertyAccessExpression{Token: p.curToken, Left: left}
+
+	if !p.expectPeek(token.IDENT) {
+		return nil
+	}
+	exp.Property = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+	return exp
+}
+
 func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	stmt := &ast.ReturnStatement{Token: p.curToken}
 
@@ -509,6 +522,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseFunctionStatement()
 	case token.RETURN:
 		return p.parseReturnStatement()
+	case token.STRUCT:
+		return p.parseStructStatement()
 	case token.VAR:
 		return p.parseVarStatement()
 	default:
@@ -518,6 +533,54 @@ func (p *Parser) parseStatement() ast.Statement {
 
 func (p *Parser) parseStringLiteral() ast.Expression {
 	return &ast.StringLiteral{Token: p.curToken, Value: p.curToken.Literal}
+}
+
+func (p *Parser) parseStructMembers() []*ast.StructMember {
+	var members []*ast.StructMember
+	p.nextToken() // Move past Struct name
+
+	for p.curToken.Type != token.EOF && p.curToken.Type != token.END {
+		if p.curToken.Type == token.IDENT {
+			ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+			if !p.expectPeek(token.AS) {
+				return nil
+			}
+			p.nextToken()
+			typeName := p.curToken.Literal
+
+			members = append(members, &ast.StructMember{
+				Token:    ident.Token,
+				Name:     ident,
+				TypeName: typeName,
+			})
+		}
+		p.nextToken()
+	}
+
+	return members
+}
+
+func (p *Parser) parseStructStatement() *ast.StructStatement {
+	stmt := &ast.StructStatement{Token: p.curToken}
+
+	if !p.expectPeek(token.IDENT) {
+		return nil
+	}
+	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+	// Parse members until END STRUCT
+	stmt.Members = p.parseStructMembers()
+
+	if p.curToken.Type != token.END {
+		p.peekError(token.END)
+		return nil
+	}
+
+	if !p.expectPeek(token.STRUCT) {
+		return nil
+	}
+
+	return stmt
 }
 
 func (p *Parser) parseVarStatement() *ast.VarStatement {

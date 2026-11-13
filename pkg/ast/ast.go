@@ -310,6 +310,22 @@ func (p *Program) String() string {
 }
 
 //
+// PropertyAccessExpression represents dot notation like v.X
+//
+
+type PropertyAccessExpression struct {
+	token.Token // The '.' token
+	Left        Expression
+	Property    *Identifier
+}
+
+func (pae *PropertyAccessExpression) expressionNode()      {}
+func (pae *PropertyAccessExpression) TokenLiteral() string { return pae.Literal }
+func (pae *PropertyAccessExpression) String() string {
+	return "(" + pae.Left.String() + "." + pae.Property.String() + ")"
+}
+
+//
 // ReturnStatement
 //
 
@@ -350,6 +366,45 @@ type StringLiteral struct {
 func (sl *StringLiteral) expressionNode()      {}
 func (sl *StringLiteral) TokenLiteral() string { return sl.Literal }
 func (sl *StringLiteral) String() string       { return `"` + sl.Value + `"` }
+
+//
+// StructMember
+//
+
+type StructMember struct {
+	token.Token
+	Name     *Identifier
+	TypeName string
+}
+
+func (sm *StructMember) statementNode()       {}
+func (sm *StructMember) TokenLiteral() string { return sm.Literal }
+func (sm *StructMember) String() string {
+	return sm.Name.String() + " As " + sm.TypeName
+}
+
+//
+// StructStatement
+//
+
+type StructStatement struct {
+	token.Token
+	Name    *Identifier
+	Members []*StructMember
+}
+
+func (ss *StructStatement) statementNode()       {}
+func (ss *StructStatement) TokenLiteral() string { return ss.Literal }
+func (ss *StructStatement) String() string {
+	var out string
+	out += "Struct " + ss.Name.String() + " "
+	members := []string{}
+	for _, m := range ss.Members {
+		members = append(members, m.String())
+	}
+	out += strings.Join(members, " ") + " End Struct"
+	return out
+}
 
 //
 // VarStatement

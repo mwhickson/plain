@@ -28,6 +28,7 @@ const (
 	NOTEQ    = "!="
 	NUMBER   = "NUMBER"
 	NUMERIC  = "NUMERIC"
+	PERIOD   = "."
 	PLUS     = "+"
 	PRINT    = "PRINT"
 	RBRACKET = "]"
@@ -36,6 +37,7 @@ const (
 	SLASH    = "/"
 	STEP     = "STEP"
 	STRING   = "STRING"
+	STRUCT   = "STRUCT"
 	THEN     = "THEN"
 	TO       = "TO"
 	TRUE     = "TRUE"
@@ -55,6 +57,7 @@ var keywords = map[string]TokenType{
 	"Print":    PRINT,
 	"Return":   RETURN,
 	"Step":     STEP,
+	"Struct":   STRUCT,
 	"Then":     THEN,
 	"To":       TO,
 	"True":     TRUE,
