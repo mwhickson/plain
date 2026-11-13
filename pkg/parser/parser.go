@@ -116,24 +116,6 @@ func (p *Parser) nextToken() {
 	p.peekToken = p.l.NextToken()
 }
 
-func (p *Parser) parseAssignmentStatement() *ast.AssignmentStatement {
-	stmt := &ast.AssignmentStatement{Token: p.curToken}
-	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-
-	if !p.expectPeek(token.ASSIGN) {
-		return nil
-	}
-
-	p.nextToken()
-	stmt.Value = p.parseExpression(LOWEST)
-
-	if p.peekTokenIs(token.EOF) {
-		p.nextToken()
-	}
-
-	return stmt
-}
-
 func (p *Parser) parseBlockStatement() []ast.Statement {
 	var statements []ast.Statement
 	p.nextToken() // Move past Then or Else
@@ -286,6 +268,30 @@ func (p *Parser) parseForBlockStatement() []ast.Statement {
 func (p *Parser) parseFunctionStatement() *ast.FunctionStatement {
 	stmt := &ast.FunctionStatement{Token: p.curToken}
 
+	// Check for optional receiver: (v As Vector2D)
+	if p.peekTokenIs(token.LPAREN) {
+		p.nextToken() // move to LPAREN
+		p.nextToken() // move to receiver identifier (e.g. 'v')
+
+		ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		if !p.expectPeek(token.AS) {
+			return nil
+		}
+		p.nextToken() // move to struct type name (e.g. 'Vector2D')
+		typeName := p.curToken.Literal
+
+		stmt.Receiver = &ast.StructMember{
+			Token:    ident.Token,
+			Name:     ident,
+			TypeName: typeName,
+		}
+
+		if !p.expectPeek(token.RPAREN) {
+			return nil
+		}
+	}
+
+	// Expect and parse function name
 	if !p.expectPeek(token.IDENT) {
 		return nil
 	}
@@ -297,17 +303,13 @@ func (p *Parser) parseFunctionStatement() *ast.FunctionStatement {
 
 	stmt.Parameters = p.parseFunctionParameters()
 
-	// Optional Return Type: As TypeName
+	// Optional Return Type: As TypeName (consume if present so it doesn't disrupt body parsing)
 	if p.peekTokenIs(token.AS) {
 		p.nextToken() // move to AS
-		if p.peekTokenIs(token.IDENT) || p.peekTokenIs(token.NUMERIC) || p.peekTokenIs(token.STRING) || p.peekTokenIs(token.FUNCTION) {
-			p.nextToken()
-			stmt.ReturnType = p.curToken.Literal
-		} else {
-			p.peekError(token.IDENT)
-			return nil
-		}
+		p.nextToken() // move past AS to the type name
 	}
+
+	// Parse function body statements until End Function
 	stmt.Body = p.parseFunctionBlockStatement()
 
 	if p.curToken.Type != token.END {
@@ -509,11 +511,6 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 
 func (p *Parser) parseStatement() ast.Statement {
 	switch p.curToken.Type {
-	case token.IDENT:
-		if p.peekTokenIs(token.ASSIGN) {
-			return p.parseAssignmentStatement()
-		}
-		return p.parseExpressionStatement()
 	case token.IF:
 		return p.parseIfStatement()
 	case token.FOR:
@@ -527,7 +524,19 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.VAR:
 		return p.parseVarStatement()
 	default:
-		return p.parseExpressionStatement()
+		// Check if this is an assignment statement (e.g. x = 10 or v.X = 20)
+		exp := p.parseExpression(LOWEST)
+		if p.peekTokenIs(token.ASSIGN) {
+			stmt := &ast.AssignmentStatement{Token: p.curToken, Left: exp}
+			p.nextToken() // move to ASSIGN
+			p.nextToken() // move past ASSIGN to RHS expression
+			stmt.Value = p.parseExpression(LOWEST)
+			if p.peekTokenIs(token.EOF) {
+				p.nextToken()
+			}
+			return stmt
+		}
+		return &ast.ExpressionStatement{Token: p.curToken, Expression: exp}
 	}
 }
 

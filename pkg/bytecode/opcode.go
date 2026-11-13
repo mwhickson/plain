@@ -33,6 +33,7 @@ const (
 	OpPushNone
 	OpPushTrue
 	OpReturn
+	OpSetProperty
 	OpStoreLocal
 	OpStoreVar
 	OpSub
@@ -100,6 +101,8 @@ func (o Opcode) String() string {
 		return "OP_PUSH_TRUE"
 	case OpReturn:
 		return "OP_RETURN"
+	case OpSetProperty:
+		return "OP_SET_PROPERTY"
 	case OpStoreLocal:
 		return "OP_STORE_LOCAL"
 	case OpStoreVar:

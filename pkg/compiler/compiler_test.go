@@ -494,3 +494,29 @@ func TestCompilerStructs(t *testing.T) {
 		t.Fatalf("compiler error: %v", err)
 	}
 }
+
+func TestCompilerReceiverFunctions(t *testing.T) {
+	input := `
+	Struct Vector2D
+		X As Numeric
+		Y As Numeric
+	End Struct
+
+	Function (v As Vector2D) Scale(factor As Numeric)
+		v.X = v.X * factor
+	End Function
+	`
+
+	l := parser.NewLexer(input)
+	p := parser.NewParser(l)
+	program := p.ParseProgram()
+
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+}

@@ -11,14 +11,14 @@ import (
 
 type AssignmentStatement struct {
 	token.Token
-	Name  *Identifier
+	Left  Expression
 	Value Expression
 }
 
 func (as *AssignmentStatement) statementNode()       {}
 func (as *AssignmentStatement) TokenLiteral() string { return as.Literal }
 func (as *AssignmentStatement) String() string {
-	return as.Name.String() + " = " + as.Value.String()
+	return as.Left.String() + " = " + as.Value.String()
 }
 
 //
@@ -114,9 +114,9 @@ func (fs *ForStatement) String() string {
 
 type FunctionStatement struct {
 	token.Token
+	Receiver   *StructMember // Optional receiver parameter e.g. (v As Vector2D)
 	Name       *Identifier
 	Parameters []*Parameter
-	ReturnType string // Optional; empty if none
 	Body       []Statement
 }
 
@@ -124,15 +124,16 @@ func (fs *FunctionStatement) statementNode()       {}
 func (fs *FunctionStatement) TokenLiteral() string { return fs.Literal }
 func (fs *FunctionStatement) String() string {
 	var out string
-	out += "Function " + fs.Name.String() + "("
+	out += "Function "
+	if fs.Receiver != nil {
+		out += "(" + fs.Receiver.String() + ") "
+	}
+	out += fs.Name.String() + "("
 	params := []string{}
 	for _, p := range fs.Parameters {
 		params = append(params, p.String())
 	}
-	out += strings.Join(params, ", ") + ")"
-	if fs.ReturnType != "" {
-		out += " As " + fs.ReturnType
-	}
+	out += strings.Join(params, ", ") + ") "
 	for _, s := range fs.Body {
 		out += s.String()
 	}

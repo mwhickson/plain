@@ -369,6 +369,30 @@ func (vm *VM) Run() error {
 			// Push return value onto the stack
 			vm.Push(retVal)
 
+		case bytecode.OpSetProperty:
+			constIdx := vm.chunk.Code[vm.ip]
+			vm.ip++
+
+			propNameVal := vm.chunk.Constants[constIdx]
+			propName := propNameVal.Str
+
+			val, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+
+			targetVal, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+
+			if targetVal.Type == value.ValStruct {
+				m := targetVal.Obj.(map[string]value.Value)
+				m[propName] = val
+			} else {
+				return fmt.Errorf("type error: property assignment unsupported for type %s", targetVal.Type)
+			}
+
 		case bytecode.OpStoreLocal:
 			slotIndex := vm.chunk.Code[vm.ip]
 			vm.ip++

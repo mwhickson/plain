@@ -36,22 +36,43 @@ func (c *Compiler) Bytecode() *bytecode.Chunk {
 func (c *Compiler) Compile(node ast.Node) error {
 	switch n := node.(type) {
 	case *ast.AssignmentStatement:
-		// 1. Compile RHS expression
-		if err := c.Compile(n.Value); err != nil {
-			return err
-		}
-		// 2. Lookup existing variable slot using Resolve
-		symbol, exists := c.symbolTable.Resolve(n.Name.Value)
-		if !exists {
-			return fmt.Errorf("undefined variable for assignment: %s", n.Name.Value)
-		}
-		// 3. Emit store instruction and slot index based on scope
-		if symbol.Scope == GlobalScope || !c.inFunction {
-			c.chunk.WriteOpcode(bytecode.OpStoreVar)
-			c.chunk.WriteByte(symbol.Index)
-		} else {
-			c.chunk.WriteOpcode(bytecode.OpStoreLocal)
-			c.chunk.WriteByte(symbol.Index)
+		switch left := n.Left.(type) {
+		case *ast.Identifier:
+			// 1. Compile RHS expression
+			if err := c.Compile(n.Value); err != nil {
+				return err
+			}
+			// 2. Lookup existing variable slot using Resolve
+			symbol, exists := c.symbolTable.Resolve(left.Value)
+			if !exists {
+				return fmt.Errorf("undefined variable for assignment: %s", left.Value)
+			}
+			// 3. Emit store instruction and slot index based on scope
+			if symbol.Scope == GlobalScope || !c.inFunction {
+				c.chunk.WriteOpcode(bytecode.OpStoreVar)
+				c.chunk.WriteByte(symbol.Index)
+			} else {
+				c.chunk.WriteOpcode(bytecode.OpStoreLocal)
+				c.chunk.WriteByte(symbol.Index)
+			}
+
+		case *ast.PropertyAccessExpression:
+			// 1. Compile object expression (pushes struct value)
+			if err := c.Compile(left.Left); err != nil {
+				return err
+			}
+			// 2. Compile RHS expression (pushes new value)
+			if err := c.Compile(n.Value); err != nil {
+				return err
+			}
+			// 3. Add property name as constant
+			propNameVal := value.NewString(left.Property.Value)
+			constIdx := c.chunk.AddConstant(propNameVal)
+			c.chunk.WriteOpcode(bytecode.OpSetProperty)
+			c.chunk.WriteByte(constIdx)
+
+		default:
+			return fmt.Errorf("invalid left-hand side for assignment: %T", n.Left)
 		}
 
 	case *ast.BooleanLiteral:
@@ -252,6 +273,12 @@ func (c *Compiler) Compile(node ast.Node) error {
 
 		oldLocalVarCount := c.localVarCount
 		c.localVarCount = 0 // Function frames start local indices at 0
+
+		// Define receiver in the function's symbol table if present
+		if n.Receiver != nil {
+			c.symbolTable.Define(n.Receiver.Name.Value, c.localVarCount)
+			c.localVarCount++
+		}
 
 		// Define parameters in the function's symbol table with explicit indices
 		for _, param := range n.Parameters {
