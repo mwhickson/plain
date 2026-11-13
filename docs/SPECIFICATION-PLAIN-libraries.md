@@ -48,6 +48,24 @@ This proposal outlines the core module layout and candidate function sets for th
 * `Open(path)`
 * `Query(db, sql, params...)`
 
+### Decimal *(Candidate / Future)*
+
+* **Purpose**: Fixed-point arithmetic and rounding modes for accurate financial, accounting, and currency calculations without floating-point discrepancies.
+* **Functions**:
+* `Add(a, b)`, `Sub(a, b)`, `Mul(a, b)`, `Div(a, b)`
+* `FormatCurrency(amount, pictureClause)`
+* `FromString(numericString)`
+* `RoundBankers(amount, decimals)`
+
+### Email *(Candidate / Future)*
+
+* **Purpose**: Automated SMTP messaging and report delivery for business alerts and workflows.
+* **Functions**:
+* `AttachFile(message, filePath)`
+* `ConfigureSMTP(host, port, username, password)`
+* `CreateMessage(to, subject, body)`
+* `Send(message)`
+
 ### Environment
 
 * **Purpose**: Platform-specific system inspection, path resolution, and variable access.
@@ -118,6 +136,26 @@ This proposal outlines the core module layout and candidate function sets for th
 * `Reverse(list)`
 * `Sort(list, comparatorFn)`
 
+### Locale *(Candidate / Future)*
+
+* **Purpose**: Regional formatting for dates, numbers, thousands separators, and currency symbols.
+* **Functions**:
+* `FormatCurrency(amount, localeCode)`
+* `FormatDate(timestamp, localeCode)`
+* `FormatNumber(number, localeCode)`
+* `GetSystemLocale()`
+
+### Log *(Candidate / Future)*
+
+* **Purpose**: Structured application logging and audit trails with severity levels and file redirection.
+* **Functions**:
+* `Debug(message)`
+* `Error(message)`
+* `Info(message)`
+* `SetLevel(level)`
+* `SetOutputFile(path)`
+* `Warn(message)`
+
 ### Math
 
 * **Purpose**: Business, programmer, and scientific mathematical operations.
@@ -148,15 +186,18 @@ This proposal outlines the core module layout and candidate function sets for th
 
 ### String
 
-* **Purpose**: Advanced text manipulation, substring extraction, and encoding utilities.
+* **Purpose**: Advanced text manipulation, substring extraction, pattern matching, and encoding utilities.
 * **Functions**:
 * `Base64Encode(str)` / `Base64Decode(str)`
+* `ExtractRegex(str, pattern)`
 * `Join(list, delimiter)`
 * `Left(str, count)`
 * `Len(str)`
 * `Lower(str)` / `Upper(str)`
+* `MatchRegex(str, pattern)`
 * `Mid(str, start, length)`
 * `Replace(str, target, replacement)`
+* `ReplaceRegex(str, pattern, replacement)`
 * `Right(str, count)`
 * `Split(str, delimiter)`
 
