@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 	"plain/pkg/compiler"
 	"plain/pkg/parser"
 	"plain/pkg/vm"
+	"strconv"
+	"strings"
 )
 
 func main() {
@@ -52,7 +52,7 @@ func runSource(source string) {
 
 func startREPL() {
 	fmt.Println("PLAIN Programming Language REPL")
-	fmt.Println("Commands: new, list, save <file>, load <file>, edit <line>, exit")
+	fmt.Println("Type 'help' for a list of commands, or 'exit' to quit.")
 	fmt.Println("------------------------------------------------------------")
 
 	var lines []string
@@ -112,6 +112,17 @@ func startREPL() {
 		cmd := strings.ToLower(parts[0])
 
 		switch cmd {
+		case "help":
+			fmt.Println("Available REPL Commands:")
+			fmt.Println("  help           - Show this help menu")
+			fmt.Println("  new            - Clear the current session")
+			fmt.Println("  list           - Show code lines in memory")
+			fmt.Println("  run            - Execute code currently in memory")
+			fmt.Println("  save <file>    - Save session lines to a file")
+			fmt.Println("  load <file>    - Load session lines from a file")
+			fmt.Println("  edit <line>    - Edit a specific line number (blank to delete)")
+			fmt.Println("  exit / quit    - Exit the REPL")
+
 		case "new":
 			lines = []string{}
 			fmt.Println("Session cleared.")
@@ -124,6 +135,10 @@ func startREPL() {
 					fmt.Printf("%3d: %s\n", i+1, l)
 				}
 			}
+
+		case "run":
+			fmt.Println("Running session...")
+			executeSession()
 
 		case "save":
 			if len(parts) < 2 {
