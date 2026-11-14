@@ -1,9 +1,0 @@
-Function MyErrorHandler(errMsg As String)
-    Console.Print("Caught runtime error: " + errMsg)
-End Function
-
-System.SetErrorHandler(MyErrorHandler)
-
-' This will trigger a division by zero error, caught by MyErrorHandler
-Var x As Numeric = 10 / 0
-Console.Print("Program continued successfully after error.")

@@ -23,10 +23,24 @@ PLAIN, and its associated tooling, is intended to fill software development nich
 - **Data Structures:** Heterogeneous lists (`[1, 2, 3]`) with zero-based indexing, and user-defined `Struct` types with dot-notation property access and assignment.
 - **Receiver Functions:** Methods bound to struct types (e.g., `Function (v As Vector2D) Scale(...)`).
 - **Standard Library (`pkg/modules`):**
+  - `System`: Built-in system functions (`System.SetErrorHandler`, `System.Exit`).
   - `Console`: Built-in terminal I/O functions (`Console.Print`, `Console.PrintLine`, `Console.Input`, `Console.Cls`).
 - **Bytecode Disassembler:** Built-in instruction disassembly for inspecting compiled chunks.
 
 ## Language Examples
+
+### System
+```plain
+Function MyErrorHandler(errMsg As String)
+    Console.Print("Caught runtime error: " + errMsg)
+End Function
+
+System.SetErrorHandler(MyErrorHandler)
+
+' This will trigger a division by zero error, caught by MyErrorHandler
+Var x As Numeric = 10 / 0
+Console.Print("Program continued successfully after error.")
+```
 
 ### Console I/O and Variables
 ```plain
@@ -121,6 +135,7 @@ plain/
 │   │   └── symbol.go        # Lexical scoping and symbol resolution
 │   ├── modules/
 │   │   └── console.go       # Built-in Console standard library module
+│   │   └── system.go        # Built-in System standard library module
 │   ├── parser/
 │   │   ├── lexer.go         # Tokenizer (source text to tokens)
 │   │   └── parser.go        # Pratt parser (tokens to AST)
