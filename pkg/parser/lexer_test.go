@@ -40,3 +40,31 @@ func TestLexerBasic(t *testing.T) {
 		}
 	}
 }
+
+func TestLexerLineContinuation(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"LF", "first \\\n second"},
+		{"CRLF", "first\\\r\nsecond"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := parser.NewLexer(tt.input)
+			first := l.NextToken()
+			second := l.NextToken()
+
+			if first.Type != token.IDENT || first.Literal != "first" || first.Line != 1 {
+				t.Fatalf("first token = %+v, want first identifier on line 1", first)
+			}
+			if second.Type != token.IDENT || second.Literal != "second" || second.Line != 2 {
+				t.Fatalf("second token = %+v, want second identifier on line 2", second)
+			}
+			if tok := l.NextToken(); tok.Type != token.EOF {
+				t.Fatalf("final token = %+v, want EOF", tok)
+			}
+		})
+	}
+}

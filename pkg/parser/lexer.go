@@ -161,10 +161,43 @@ func (l *Lexer) skipComment() {
 }
 
 func (l *Lexer) skipWhitespace() {
-	for l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' {
-		if l.ch == '\n' {
-			l.line++
+	for {
+		switch l.ch {
+		case ' ', '\t', '\r', '\n':
+			if l.ch == '\n' {
+				l.line++
+			}
+			l.readChar()
+		case '\\':
+			if !l.skipLineContinuation() {
+				return
+			}
+		default:
+			return
 		}
+	}
+}
+
+func (l *Lexer) skipLineContinuation() bool {
+	position := l.readPosition
+	for position < len(l.input) && (l.input[position] == ' ' || l.input[position] == '\t') {
+		position++
+	}
+	if position >= len(l.input) || (l.input[position] != '\n' && l.input[position] != '\r') {
+		return false
+	}
+
+	for l.position < position {
 		l.readChar()
 	}
+	if l.ch == '\r' {
+		l.readChar()
+		if l.ch == '\n' {
+			l.readChar()
+		}
+	} else {
+		l.readChar()
+	}
+	l.line++
+	return true
 }

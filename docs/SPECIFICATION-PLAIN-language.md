@@ -52,7 +52,7 @@ Var currentRoom As Room
 
 ### 3.1 Identifiers, Keywords, and Comments
 - Keywords are case-insensitive (e.g., `Function`, `function`, and `FUNCTION` are equivalent), though **PascalCase** is idiomatic.
-- Statements are line-delimited (newline character). Multiple statements per line are not permitted.
+- Statements are line-delimited (newline character). A trailing backslash (`\`) joins the next physical line to the current logical line. Multiple statements per logical line are not permitted.
 - **Comments:** Single-quote characters (`'`) denote single-line comments extending to the end of the line.
 
 ### 3.2 Functions
