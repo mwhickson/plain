@@ -4,7 +4,8 @@
 '
 
 Const Rooms As List = [
-	CreateRoom(100, "Cave Entrance", "The dark and foreboding entrance to a large cave.")
+	CreateRoom(100, "Cave Entrance", "The dark and foreboding entrance to a large cave."),
+	CreateRoom(200, "Cave Room 1", "The room is dark, dank. The floor of the room is relatively flat and level, but dusty and with debris strewn about."),
 ]
 
 System.SetErrorHandler(MyErrorHandler)

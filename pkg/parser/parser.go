@@ -137,7 +137,7 @@ func (p *Parser) parseBooleanLiteral() ast.Expression {
 
 func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
 	exp := &ast.CallExpression{Token: p.curToken, Function: function}
-	exp.Arguments = p.parseExpressionList(token.RPAREN)
+	exp.Arguments = p.parseExpressionList(token.RPAREN, false)
 	return exp
 }
 
@@ -173,7 +173,7 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	return stmt
 }
 
-func (p *Parser) parseExpressionList(end token.TokenType) []ast.Expression {
+func (p *Parser) parseExpressionList(end token.TokenType, allowTrailingComma bool) []ast.Expression {
 	var list []ast.Expression
 
 	if p.peekTokenIs(end) {
@@ -186,7 +186,10 @@ func (p *Parser) parseExpressionList(end token.TokenType) []ast.Expression {
 
 	for p.peekTokenIs(token.COMMA) {
 		p.nextToken() // move to comma
-		p.nextToken() // move past comma to next expression
+		p.nextToken() // move past comma
+		if allowTrailingComma && p.curToken.Type == end {
+			return list
+		}
 		list = append(list, p.parseExpression(LOWEST))
 	}
 
@@ -468,7 +471,7 @@ func (p *Parser) parseIntegerLiteral() ast.Expression {
 
 func (p *Parser) parseListLiteral() ast.Expression {
 	array := &ast.ListLiteral{Token: p.curToken}
-	array.Elements = p.parseExpressionList(token.RBRACKET)
+	array.Elements = p.parseExpressionList(token.RBRACKET, true)
 	return array
 }
 

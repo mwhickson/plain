@@ -205,7 +205,8 @@ Literal          = NumericLiteral | StringLiteral | BooleanLiteral | ListLiteral
 NumericLiteral   = digit { digit } [ "." digit { digit } ] ;
 StringLiteral    = '"' { string_char } '"' ;
 BooleanLiteral   = "True" | "False" ;
-ListLiteral      = "[" [ ExpressionList ] "]" ;
+ListLiteral      = "[" [ ListElements ] "]" ;
+ListElements     = Expression { "," Expression } [ "," ] ;
 
 Identifier       = letter { letter | digit | "_" } ;
 ```

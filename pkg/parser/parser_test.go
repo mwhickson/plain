@@ -68,3 +68,31 @@ func TestVarStatementWithoutInitializer(t *testing.T) {
 		t.Fatalf("initializer = %v, want nil", stmt.Value)
 	}
 }
+
+func TestListLiteralAllowsTrailingComma(t *testing.T) {
+	p := parser.NewParser(parser.NewLexer(`[1, 2,]`))
+	program := p.ParseProgram()
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("statement has type %T, want *ast.ExpressionStatement", program.Statements[0])
+	}
+	list, ok := stmt.Expression.(*ast.ListLiteral)
+	if !ok {
+		t.Fatalf("expression has type %T, want *ast.ListLiteral", stmt.Expression)
+	}
+	if len(list.Elements) != 2 {
+		t.Fatalf("list has %d elements, want 2", len(list.Elements))
+	}
+}
+
+func TestCallArgumentsStillRejectTrailingComma(t *testing.T) {
+	p := parser.NewParser(parser.NewLexer(`PrintLine("value",)`))
+	p.ParseProgram()
+	if len(p.Errors()) == 0 {
+		t.Fatal("expected parser error for trailing comma in call arguments")
+	}
+}
