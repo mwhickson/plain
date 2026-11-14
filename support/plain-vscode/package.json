@@ -9,7 +9,7 @@
     "languages": [{
       "id": "plain",
       "aliases": ["PLAIN", "plain"],
-      "extensions: [".plain"]
+      "extensions": [".plain"]
     }],
     "grammars": [{
       "language": "plain",

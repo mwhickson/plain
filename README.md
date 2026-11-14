@@ -122,10 +122,21 @@ The repository includes a support directory containing pre-configured syntax hig
 
 ### Visual Studio Code (`support/plain-vscode/`)
 
-To install the extension locally for VS Code:
+To run the extension locally for VS Code:
 
-1. Copy or symlink the `support/plain-vscode` folder into your VS Code extensions directory (typically `~/.vscode/extensions/plain-syntax` on Linux/macOS or `%USERPROFILE%\.vscode\extensions\plain-syntax` on Windows).
-2. Reload VS Code (`Developer: Reload Window`). Files ending in `.plain` will automatically map to the PLAIN language configuration.
+Run the extension in VS Code's `Extension Development Host` via:
+
+```
+code --new-window \
+  --extensionDevelopmentPath="$PWD/support/plain-vscode" \
+  "$PWD/examples/adventure.plain"
+```
+
+**OR**
+
+Build and install a `VSIX` package.
+
+> NOTE: Xcopy deployment for VS Code extensions is no longer possible.
 
 ### Zed (`support/plain-zed/`)
 
