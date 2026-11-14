@@ -3,6 +3,7 @@ package vm
 import (
 	"fmt"
 	"plain/pkg/bytecode"
+	"plain/pkg/modules"
 	"plain/pkg/value"
 )
 
@@ -24,6 +25,10 @@ func NewVM(chunk *bytecode.Chunk) *VM {
 		frames:     make([]Frame, 1024),
 		frameIndex: 1,
 	}
+
+	// Bind the Console module to global slot 0 (matching the compiler's first pre-registration)
+	vm.globals[0] = modules.GetConsoleModule()
+
 	// Setup root frame for main script
 	vm.frames[0] = Frame{
 		closure:     nil,
@@ -69,8 +74,10 @@ func (vm *VM) Run() error {
 
 			if a.Type == value.ValNumeric && b.Type == value.ValNumeric {
 				vm.Push(value.NewNumeric(a.Num + b.Num))
+			} else if a.Type == value.ValString && b.Type == value.ValString {
+				vm.Push(value.NewString(a.Str + b.Str))
 			} else {
-				return fmt.Errorf("type error: '+' expects numeric operands, got %s and %s", a.Type, b.Type)
+				return fmt.Errorf("type error: '+' expects numeric or string operands, got %s and %s", a.Type, b.Type)
 			}
 
 		case bytecode.OpBuildList:
@@ -94,64 +101,86 @@ func (vm *VM) Run() error {
 			vm.Push(listVal)
 
 		case bytecode.OpCall:
-			numArgs := int(vm.chunk.Code[vm.ip])
+			argCount := int(vm.chunk.Code[vm.ip])
 			vm.ip++
 
-			// Pop arguments in reverse order
-			args := make([]value.Value, numArgs)
-			for i := numArgs - 1; i >= 0; i-- {
-				arg, err := vm.Pop()
+			// The function object is located on the stack just below the arguments
+			calleeIdx := len(vm.stack) - argCount - 1
+			callee := vm.stack[calleeIdx]
+
+			if callee.Type == value.ValBuiltin {
+				fn := callee.Obj.(value.BuiltinFunction)
+				args := vm.stack[calleeIdx+1:]
+
+				// Pop callee and arguments off the stack
+				vm.stack = vm.stack[:calleeIdx]
+
+				result, err := fn(args)
 				if err != nil {
 					return err
 				}
-				args[i] = arg
-			}
+				// Push result onto the stack
+				vm.stack = append(vm.stack, result)
+			} else {
+				numArgs := int(vm.chunk.Code[vm.ip])
+				vm.ip++
 
-			// Now pop the callee itself
-			callee, err := vm.Pop()
-			if err != nil {
-				return err
-			}
+				// Pop arguments in reverse order
+				args := make([]value.Value, numArgs)
+				for i := numArgs - 1; i >= 0; i-- {
+					arg, err := vm.Pop()
+					if err != nil {
+						return err
+					}
+					args[i] = arg
+				}
 
-			var closure *value.ClosureObject
-			switch callee.Type {
-			case value.ValClosure:
-				closure = callee.Obj.(*value.ClosureObject)
-			case value.ValFunction:
-				fnObj := callee.Obj.(*value.FunctionObject)
-				closure = &value.ClosureObject{Fn: fnObj, Free: nil}
-			default:
-				return fmt.Errorf("type error: can only call functions or closures, got %s", callee.Type)
-			}
+				// Now pop the callee itself
+				callee, err := vm.Pop()
+				if err != nil {
+					return err
+				}
 
-			if numArgs != closure.Fn.ParamCount {
-				return fmt.Errorf("wrong number of arguments: want %d, got %d", closure.Fn.ParamCount, numArgs)
-			}
+				var closure *value.ClosureObject
+				switch callee.Type {
+				case value.ValClosure:
+					closure = callee.Obj.(*value.ClosureObject)
+				case value.ValFunction:
+					fnObj := callee.Obj.(*value.FunctionObject)
+					closure = &value.ClosureObject{Fn: fnObj, Free: nil}
+				default:
+					return fmt.Errorf("type error: can only call functions or closures, got %s", callee.Type)
+				}
 
-			// Save current frame's IP before switching
-			vm.frames[vm.frameIndex-1].ip = vm.ip
+				if numArgs != closure.Fn.ParamCount {
+					return fmt.Errorf("wrong number of arguments: want %d, got %d", closure.Fn.ParamCount, numArgs)
+				}
 
-			// Set base pointer for the new frame where arguments will reside on the stack
-			basePtr := len(vm.stack)
-			for _, arg := range args {
-				vm.Push(arg)
-			}
-			// Ensure stack has space allocated for all local variables (temps / local functions)
-			for i := len(args); i < closure.Fn.LocalVarCount; i++ {
-				vm.Push(value.NewNone())
-			}
+				// Save current frame's IP before switching
+				vm.frames[vm.frameIndex-1].ip = vm.ip
 
-			// Push new call frame
-			newFrame := Frame{
-				closure:     closure,
-				ip:          closure.Fn.InstructionStartIndex,
-				basePointer: basePtr,
-			}
-			vm.frames[vm.frameIndex] = newFrame
-			vm.frameIndex++
+				// Set base pointer for the new frame where arguments will reside on the stack
+				basePtr := len(vm.stack)
+				for _, arg := range args {
+					vm.Push(arg)
+				}
+				// Ensure stack has space allocated for all local variables (temps / local functions)
+				for i := len(args); i < closure.Fn.LocalVarCount; i++ {
+					vm.Push(value.NewNone())
+				}
 
-			// Jump VM instruction pointer to function start
-			vm.ip = closure.Fn.InstructionStartIndex
+				// Push new call frame
+				newFrame := Frame{
+					closure:     closure,
+					ip:          closure.Fn.InstructionStartIndex,
+					basePointer: basePtr,
+				}
+				vm.frames[vm.frameIndex] = newFrame
+				vm.frameIndex++
+
+				// Jump VM instruction pointer to function start
+				vm.ip = closure.Fn.InstructionStartIndex
+			}
 
 		case bytecode.OpClosure:
 			constIdx := vm.chunk.Code[vm.ip]

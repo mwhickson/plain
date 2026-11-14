@@ -30,7 +30,6 @@ const (
 	NUMERIC  = "NUMERIC"
 	PERIOD   = "."
 	PLUS     = "+"
-	PRINT    = "PRINT"
 	RBRACKET = "]"
 	RETURN   = "RETURN"
 	RPAREN   = ")"
@@ -54,7 +53,6 @@ var keywords = map[string]TokenType{
 	"If":       IF,
 	"None":     NONE,
 	"Numeric":  NUMERIC,
-	"Print":    PRINT,
 	"Return":   RETURN,
 	"Step":     STEP,
 	"Struct":   STRUCT,

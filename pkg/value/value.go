@@ -8,6 +8,7 @@ import (
 const (
 	ValNone ValueType = iota
 	ValBoolean
+	ValBuiltin
 	ValClosure
 	ValFunction
 	ValList
@@ -15,6 +16,8 @@ const (
 	ValString
 	ValStruct
 )
+
+type BuiltinFunction func(args []Value) (Value, error)
 
 type ClosureObject struct {
 	Fn   *FunctionObject

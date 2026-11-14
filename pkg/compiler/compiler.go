@@ -17,7 +17,7 @@ type Compiler struct {
 }
 
 func New() *Compiler {
-	return &Compiler{
+	c := &Compiler{
 		chunk:          bytecode.NewChunk(),
 		symbolTable:    NewSymbolTable(),
 		variableTypes:  make(map[string]string),
@@ -25,6 +25,11 @@ func New() *Compiler {
 		localVarCount:  0,
 		inFunction:     false,
 	}
+
+	// Pre-register standard modules in the global symbol table
+	c.registerGlobalModule("Console")
+
+	return c
 }
 
 func (c *Compiler) Bytecode() *bytecode.Chunk {
@@ -622,4 +627,15 @@ func (c *Compiler) inferExpressionType(expr ast.Expression) (string, error) {
 		// For binary expressions, calls, or identifiers, we can expand or default to untyped for now
 		return "", nil
 	}
+}
+
+func (c *Compiler) registerGlobalModule(name string) {
+	symbol := Symbol{
+		Name:  name,
+		Scope: GlobalScope,
+		Index: c.globalVarCount,
+	}
+	c.symbolTable.Store[name] = symbol
+	c.variableTypes[name] = "Struct" // Modules are struct namespaces
+	c.globalVarCount++
 }

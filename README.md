@@ -10,19 +10,31 @@ PLAIN, and its associated tooling, is intended to fill software development nich
 
 - **Approachable Syntax:** Clear, English-like keywords and structured blocks (`If...End If`, `For...End For`, `Function...End Function`) inspired by classic rapid application development environments.
 - **Explicit Typing:** Enforced variable declarations (`Var x As Numeric`) to catch type mismatches at compile time.
+- **Modular Standard Library:** Batteries-included native modules isolated as global namespace structs (e.g., `Console.Print()`).
 - **Clean Architecture:** A decoupled pipeline spanning lexing, Pratt parsing, AST construction, bytecode compilation, and virtual machine execution.
-- **Interactive Tooling:** A built-in CLI runner and a classic line-oriented REPL for rapid prototyping and debugging.
+- **Interactive Tooling:** A built-in CLI runner and a classic line-oriented REPL supporting both buffered program construction and immediate direct-mode evaluation.
 
 ## Implemented Features
 
-- **Primitive Types:** `Numeric`, `String`, `Boolean`, and `None`.
+- **Primitive Types & Operators:** `Numeric`, `String` (including `+` concatenation), `Boolean`, and `None`.
+- **Comments:** Single-quote (`'`) line comments.
 - **Control Flow:** Conditional branching (`If...Then...Else...End If`) and range-based loops (`For...To...Step...End For`).
 - **Functions & Closures:** First-class functions, recursion, mutual recursion, and lexical closures capturing enclosing scope variables.
 - **Data Structures:** Heterogeneous lists (`[1, 2, 3]`) with zero-based indexing, and user-defined `Struct` types with dot-notation property access and assignment.
 - **Receiver Functions:** Methods bound to struct types (e.g., `Function (v As Vector2D) Scale(...)`).
+- **Standard Library (`pkg/modules`):**
+  - `Console`: Built-in terminal I/O functions (`Console.Print`, `Console.PrintLine`, `Console.Input`, `Console.Cls`).
 - **Bytecode Disassembler:** Built-in instruction disassembly for inspecting compiled chunks.
 
 ## Language Examples
+
+### Console I/O and Variables
+```plain
+' Prompt the user and greet them
+Console.Print("Hello from the PLAIN standard library!")
+Var name As String = Console.Input("What is your name? ")
+Console.Print("Nice to meet you, " + name)
+```
 
 ### Variables and Control Flow
 ```plain
@@ -75,6 +87,11 @@ Launch the CLI without arguments to start the interactive REPL:
 go run cmd/plain/main.go
 ```
 
+### Program Mode vs. Direct Mode
+
+- **Program Mode (Default)**: Entering standard PLAIN statements validates syntax silently and appends the line to the active session buffer without executing it. Use run to execute the buffered script.
+- **Direct Mode (! prefix)**: Prefixing an expression or statement with ! (e.g., !10 + 20 or !Console.Cls()) bypasses the session buffer and evaluates the line immediately.
+
 #### REPL Commands
 - `help` - Display available REPL commands
 - `new` - Clear the current session buffer
@@ -102,6 +119,8 @@ plain/
 │   ├── compiler/
 │   │   ├── compiler.go      # AST to bytecode compiler and type checker
 │   │   └── symbol.go        # Lexical scoping and symbol resolution
+│   ├── modules/
+│   │   └── console.go       # Built-in Console standard library module
 │   ├── parser/
 │   │   ├── lexer.go         # Tokenizer (source text to tokens)
 │   │   └── parser.go        # Pratt parser (tokens to AST)

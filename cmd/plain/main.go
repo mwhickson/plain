@@ -202,8 +202,54 @@ func startREPL() {
 			}
 
 		default:
-			lines = append(lines, input)
-			executeSession()
+			// Check if it's a Direct Mode bang-command (e.g. !10 + 10)
+			if strings.HasPrefix(input, "!") {
+				directSource := strings.TrimSpace(input[1:])
+				if directSource == "" {
+					continue
+				}
+
+				l := parser.NewLexer(directSource)
+				p := parser.NewParser(l)
+				program := p.ParseProgram()
+				if len(p.Errors()) > 0 {
+					for _, err := range p.Errors() {
+						fmt.Println("Parser error:", err)
+					}
+					continue
+				}
+
+				comp := compiler.New()
+				if err := comp.Compile(program); err != nil {
+					fmt.Println("Compiler error:", err)
+					continue
+				}
+
+				chunk := comp.Bytecode()
+				machine := vm.NewVM(chunk)
+				if err := machine.Run(); err != nil {
+					fmt.Println("VM runtime error:", err)
+					continue
+				}
+
+				if val, err := machine.Pop(); err == nil {
+					fmt.Println(val.String())
+				}
+			} else {
+				// Program Mode: perform a silent syntax check before buffering
+				l := parser.NewLexer(input)
+				p := parser.NewParser(l)
+				_ = p.ParseProgram()
+				if len(p.Errors()) > 0 {
+					for _, err := range p.Errors() {
+						fmt.Println("Parser error:", err)
+					}
+					continue // Reject invalid lines from buffer
+				}
+
+				lines = append(lines, input)
+				fmt.Printf("[%d lines in buffer]\n", len(lines))
+			}
 		}
 	}
 }
