@@ -1,0 +1,20 @@
+{
+  "name": "plain-syntax",
+  "displayName": "PLAIN Syntax Highlighting",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "contributes": {
+    "languages": [{
+      "id": "plain",
+      "aliases": ["PLAIN", "plain"],
+      "extensions: [".plain"]
+    }],
+    "grammars": [{
+      "language": "plain",
+      "scopeName": "source.plain",
+      "path": "./syntaxes/plain.tmLanguage.json"
+    }]
+  }
+}

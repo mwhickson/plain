@@ -116,6 +116,32 @@ go run cmd/plain/main.go
 - `load <file>` - Load a file into the session buffer and execute it
 - `exit` / `quit` - Exit the REPL
 
+## Editor Integration Support
+
+The repository includes a support directory containing pre-configured syntax highlighting definitions for popular editors, built on top of a shared TextMate grammar (support/plain.tmLanguage.json).
+
+### Visual Studio Code (`support/plain-vscode/`)
+
+To install the extension locally for VS Code:
+
+1. Copy or symlink the `support/plain-vscode` folder into your VS Code extensions directory (typically `~/.vscode/extensions/plain-syntax` on Linux/macOS or `%USERPROFILE%\.vscode\extensions\plain-syntax` on Windows).
+2. Reload VS Code (`Developer: Reload Window`). Files ending in `.plain` will automatically map to the PLAIN language configuration.
+
+### Zed (`support/plain-zed/`)
+
+To use the syntax configuration in Zed:
+
+1. Place or link the contents of `support/plain-zed` into your Zed local extensions directory (e.g., `~/.local/share/zed/extensions/installed/plain` or your local extensions development path).
+2. Zed will automatically pick up the grammar configuration (`config.toml`) and TextMate rules.
+
+### Vim / Neovim (`support/plain-vim/`)
+
+To use the native Vim syntax highlighting and filetype detection:
+
+1. Copy the contents of `support/plain-vim/` into your local Vim runtime path (usually `~/.vim/` on Unix or `$HOME/vimfiles/` on Windows; for Neovim, use `~/.config/nvim/`).
+    - `ftdetect/plain.vim` maps `.plain` file extensions to the `plain` filetype.
+    - `syntax/plain.vim` defines keywords, types, modules, comments, and highlight groups.
+
 ## Package Structure
 
 ```text
@@ -146,6 +172,11 @@ plain/
 │   └── vm/
 │       ├── frame.go         # Call frames and closure state
 │       └── vm.go            # Stack-based bytecode execution loop
+├── support/
+│   ├── plain.tmLanguage.json
+│   ├── plain-vim/           # Native Vim ftdetect and syntax files
+│   ├── plain-vscode/        # VS Code extension package configuration
+│   └── plain-zed/           # Zed editor grammar configuration
 ├── go.mod
 └── README.md
 ```
