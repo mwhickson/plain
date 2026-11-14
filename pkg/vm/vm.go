@@ -190,6 +190,18 @@ func (vm *VM) runLoop() error {
 			}
 			vm.Push(listVal)
 
+		case bytecode.OpBuildStruct:
+			constIdx := vm.chunk.Code[vm.ip]
+			vm.ip++
+			if int(constIdx) >= len(vm.chunk.Constants) {
+				return fmt.Errorf("constant index %d out of bounds", constIdx)
+			}
+			template := vm.chunk.Constants[constIdx]
+			if template.Type != value.ValStruct {
+				return fmt.Errorf("constant %d is not a struct template", constIdx)
+			}
+			vm.Push(cloneValue(template))
+
 		case bytecode.OpCall:
 			argCount := int(vm.chunk.Code[vm.ip])
 			vm.ip++
@@ -550,4 +562,24 @@ func (vm *VM) runLoop() error {
 		}
 	}
 	return nil
+}
+
+func cloneValue(val value.Value) value.Value {
+	switch val.Type {
+	case value.ValList:
+		elements := val.Obj.([]value.Value)
+		cloned := make([]value.Value, len(elements))
+		for i, element := range elements {
+			cloned[i] = cloneValue(element)
+		}
+		val.Obj = cloned
+	case value.ValStruct:
+		fields := val.Obj.(map[string]value.Value)
+		cloned := make(map[string]value.Value, len(fields))
+		for name, field := range fields {
+			cloned[name] = cloneValue(field)
+		}
+		val.Obj = cloned
+	}
+	return val
 }

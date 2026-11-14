@@ -12,6 +12,7 @@ type Compiler struct {
 	chunk          *bytecode.Chunk
 	symbolTable    *SymbolTable
 	variableTypes  map[string]string // Tracks declared type per variable name
+	structTypes    map[string][]*ast.StructMember
 	globalVarCount byte
 	localVarCount  byte
 	inFunction     bool
@@ -22,6 +23,7 @@ func New() *Compiler {
 		chunk:          bytecode.NewChunk(),
 		symbolTable:    NewSymbolTable(),
 		variableTypes:  make(map[string]string),
+		structTypes:    make(map[string][]*ast.StructMember),
 		globalVarCount: 0,
 		localVarCount:  0,
 		inFunction:     false,
@@ -494,7 +496,13 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.chunk.WriteByte(constIdx)
 
 	case *ast.Program:
-		// 1. Pre-scan pass: register all top-level functions first so they can mutually recurse
+		for _, s := range n.Statements {
+			if structStmt, ok := s.(*ast.StructStatement); ok {
+				c.structTypes[structStmt.Name.Value] = structStmt.Members
+			}
+		}
+
+		// 1. Pre-scan pass: register top-level declarations for forward references.
 		for _, s := range n.Statements {
 			if fnStmt, ok := s.(*ast.FunctionStatement); ok {
 				_, exists := c.symbolTable.Resolve(fnStmt.Name.Value)
@@ -580,8 +588,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.chunk.WriteByte(constIdx)
 
 	case *ast.StructStatement:
-		// Struct definitions act as types/schemas; for now we can treat them as declarations
-		// that don't emit runtime executable instructions (or store struct schema metadata if needed).
+		c.structTypes[n.Name.Value] = n.Members
 		return nil
 
 	case *ast.VarStatement:
@@ -589,23 +596,42 @@ func (c *Compiler) Compile(node ast.Node) error {
 			return fmt.Errorf("type required for variable '%s' (Option Explicit)", n.Name.Value)
 		}
 
-		// Infer type of RHS expression
-		exprType, err := c.inferExpressionType(n.Value)
-		if err != nil {
-			return err
+		if n.Value == nil {
+			if n.Token.Type == token.CONST {
+				return fmt.Errorf("constant '%s' requires an initializer", n.Name.Value)
+			}
+			initial, err := c.defaultValue(n.TypeName, make(map[string]bool))
+			if err != nil {
+				return err
+			}
+			if initial.Type == value.ValStruct {
+				constIdx := c.chunk.AddConstant(initial)
+				c.chunk.WriteOpcode(bytecode.OpBuildStruct)
+				c.chunk.WriteByte(constIdx)
+			} else {
+				constIdx := c.chunk.AddConstant(initial)
+				c.chunk.WriteOpcode(bytecode.OpPushConst)
+				c.chunk.WriteByte(constIdx)
+			}
+		} else {
+			// Infer type of RHS expression
+			exprType, err := c.inferExpressionType(n.Value)
+			if err != nil {
+				return err
+			}
+
+			// If we can statically determine the RHS type, enforce a match
+			if exprType != "" && exprType != n.TypeName {
+				return fmt.Errorf("type mismatch for '%s': declared %s, got %s", n.Name.Value, n.TypeName, exprType)
+			}
+
+			// Compile the RHS expression
+			if err := c.Compile(n.Value); err != nil {
+				return err
+			}
 		}
 
-		// If we can statically determine the RHS type, enforce a match
-		if exprType != "" && exprType != n.TypeName {
-			return fmt.Errorf("type mismatch for '%s': declared %s, got %s", n.Name.Value, n.TypeName, exprType)
-		}
-
-		// 1. Compile the RHS expression
-		if err := c.Compile(n.Value); err != nil {
-			return err
-		}
-
-		// 2. Define variable in the current symbol table scope with explicit index
+		// Define the variable in the current symbol table scope.
 		var symbol Symbol
 		if !c.inFunction {
 			symbol, exists := c.symbolTable.Resolve(n.Name.Value)
@@ -669,6 +695,42 @@ func (c *Compiler) inferExpressionType(expr ast.Expression) (string, error) {
 		// For binary expressions, calls, or identifiers, we can expand or default to untyped for now
 		return "", nil
 	}
+}
+
+func (c *Compiler) defaultValue(typeName string, constructing map[string]bool) (value.Value, error) {
+	switch typeName {
+	case "Boolean":
+		return value.NewBoolean(false), nil
+	case "Function", "None":
+		return value.NewNone(), nil
+	case "List":
+		return value.Value{Type: value.ValList, Obj: []value.Value{}}, nil
+	case "Numeric":
+		return value.NewNumeric(0), nil
+	case "String":
+		return value.NewString(""), nil
+	}
+
+	members, exists := c.structTypes[typeName]
+	if !exists {
+		return value.Value{}, fmt.Errorf("unknown type %q for variable", typeName)
+	}
+	if constructing[typeName] {
+		return value.NewNone(), nil
+	}
+
+	constructing[typeName] = true
+	defer delete(constructing, typeName)
+
+	fields := make(map[string]value.Value, len(members))
+	for _, member := range members {
+		initial, err := c.defaultValue(member.TypeName, constructing)
+		if err != nil {
+			return value.Value{}, fmt.Errorf("default value for %s.%s: %w", typeName, member.Name.Value, err)
+		}
+		fields[member.Name.Value] = initial
+	}
+	return value.Value{Type: value.ValStruct, Obj: fields}, nil
 }
 
 func (c *Compiler) registerGlobalModule(name string) {

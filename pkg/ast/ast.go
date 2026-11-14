@@ -421,5 +421,12 @@ type VarStatement struct {
 func (vs *VarStatement) statementNode()       {}
 func (vs *VarStatement) TokenLiteral() string { return vs.Literal }
 func (vs *VarStatement) String() string {
-	return vs.TokenLiteral() + " " + vs.Name.String() + " As " + vs.TypeName + " = " + vs.Value.String()
+	out := vs.TokenLiteral() + " " + vs.Name.String()
+	if vs.TypeName != "" {
+		out += " As " + vs.TypeName
+	}
+	if vs.Value != nil {
+		out += " = " + vs.Value.String()
+	}
+	return out
 }

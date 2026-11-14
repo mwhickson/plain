@@ -8,6 +8,7 @@ const (
 
 	OpAdd
 	OpBuildList
+	OpBuildStruct
 	OpCall
 	OpClosure
 	OpDiv
@@ -51,6 +52,8 @@ func (o Opcode) String() string {
 		return "OP_ADD"
 	case OpBuildList:
 		return "OP_BUILD_LIST"
+	case OpBuildStruct:
+		return "OP_BUILD_STRUCT"
 	case OpCall:
 		return "OP_CALL"
 	case OpClosure:

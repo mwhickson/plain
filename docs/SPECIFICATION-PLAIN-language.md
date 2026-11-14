@@ -32,10 +32,15 @@ PLAIN features a small, opinionated set of primitive and composite types:
 ### 2.1 Mutability and Declarations
 Variables are explicitly bound using `Var` (mutable) or `Const` (immutable). Assigning
 to a `Const` binding is a compile-time error.
+`Const` declarations require an initializer. A typed `Var` may omit its initializer;
+primitive variables receive their zero value, lists start empty, and declared `Struct`
+variables receive a fresh record whose fields have their type's default values. A field
+that would recursively contain its enclosing record defaults to `None`.
 
 ```plain
 Const AppName As String = "PLAIN Desktop"
 Var UserCount As Numeric = 42
+Var currentRoom As Room
 ```
 
 ### 2.2 Polymorphic Operators
@@ -79,6 +84,10 @@ Function (v As Vector2D) Multiply(factor As Numeric)
     v.Y = v.Y * factor
 End Function
 ```
+
+`Struct` declarations define data records, not classes. A record can be created as a
+typed variable and populated through its fields; ordinary functions may return records
+or collections of records without requiring constructors or object identity.
 
 ### 3.4 Control Flow
 
@@ -143,7 +152,7 @@ Statement        = VarDecl
                  | ExpressionStmt ;
 
 (* Declarations *)
-VarDecl          = ( "Var" | "Const" ) Identifier [ "As" TypeName ] "=" Expression ;
+VarDecl          = ( "Var" | "Const" ) Identifier [ "As" TypeName ] [ "=" Expression ] ;
 StructDecl       = "Struct" Identifier { MemberDecl } "End" "Struct" ;
 MemberDecl       = Identifier "As" TypeName ;
 

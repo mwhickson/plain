@@ -19,7 +19,7 @@ func DisassembleInstruction(c *Chunk, offset int) int {
 	op := Opcode(c.Code[offset])
 
 	switch op {
-	case OpPushConst, OpGetProperty, OpSetProperty:
+	case OpPushConst, OpBuildStruct, OpGetProperty, OpSetProperty:
 		constIdx := c.Code[offset+1]
 		val := c.Constants[constIdx]
 		fmt.Printf("%-16s %4d ('%s')\n", op, constIdx, val)

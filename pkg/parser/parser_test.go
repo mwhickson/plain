@@ -1,6 +1,7 @@
 package parser_test
 
 import (
+	"plain/pkg/ast"
 	"plain/pkg/parser"
 	"testing"
 )
@@ -44,5 +45,26 @@ func TestConstStatement(t *testing.T) {
 	}
 	if got := program.Statements[0].String(); got != "Const answer As Numeric = 42" {
 		t.Errorf("statement string = %q, want %q", got, "Const answer As Numeric = 42")
+	}
+}
+
+func TestVarStatementWithoutInitializer(t *testing.T) {
+	input := "Var room As Room\nroom.Id = 100"
+
+	p := parser.NewParser(parser.NewLexer(input))
+	program := p.ParseProgram()
+
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+	if len(program.Statements) != 2 {
+		t.Fatalf("statement count = %d, want 2", len(program.Statements))
+	}
+	stmt, ok := program.Statements[0].(*ast.VarStatement)
+	if !ok {
+		t.Fatalf("first statement has type %T, want *ast.VarStatement", program.Statements[0])
+	}
+	if stmt.Value != nil {
+		t.Fatalf("initializer = %v, want nil", stmt.Value)
 	}
 }

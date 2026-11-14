@@ -3,9 +3,29 @@
 ' 2026-11-14 : Matthew Hickson
 '
 
+Const Rooms As List = [
+	CreateRoom(100, "Cave Entrance", "The dark and foreboding entrance to a large cave.")
+]
+
 System.SetErrorHandler(MyErrorHandler)
 Const Result As Numeric = Main()
 System.Exit(Result)
+
+'----------
+
+Struct Room
+	Id As Numeric
+	Name As String
+	Description As String
+End Struct
+
+Function CreateRoom(id As Numeric, name As String, desc As String) As Room
+	Var r As Room
+	r.Id = id
+	r.Name = name
+	r.Description = desc
+	Return r
+End Function
 
 Function Main() As Numeric
 	Console.PrintLine("Adventure!")

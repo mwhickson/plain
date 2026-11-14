@@ -81,6 +81,7 @@ All opcodes are 1-byte wide. Operands immediately follow their respective opcode
 | `OpLoadLocal` | `slot_idx` (1 byte) | `[] -> [val]` | Pushes value from `frame.basePointer + slot_idx` onto the stack. |
 | `OpLoadFree` | `free_idx` (1 byte) | `[] -> [val]` | Pushes captured closure variable from `frame.closure.Free[free_idx]`. |
 | `OpBuildList` | `count` (1 byte) | `[e1..eN] -> [list]` | Pops `count` elements and constructs a `ValList`. |
+| `OpBuildStruct` | `const_idx` (1 byte) | `[] -> [struct]` | Clones a struct default template into a fresh record value. |
 | `OpIndex` | None | `[list, idx] -> [val]` | Indexes `list[idx]` and pushes the resulting element. |
 | `OpGetProperty` | `const_idx` (1 byte) | `[struct] -> [val]` | Pops `struct`, looks up property named by `Constants[const_idx]`, pushes value. |
 | `OpSetProperty` | `const_idx` (1 byte) | `[struct, val] -> []` | Pops `val` and `struct`, sets property named by `Constants[const_idx]` to `val`. |

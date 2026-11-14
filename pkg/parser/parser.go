@@ -608,8 +608,16 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 		stmt.TypeName = p.curToken.Literal
 	}
 
-	if !p.expectPeek(token.ASSIGN) {
-		return nil
+	if !p.peekTokenIs(token.ASSIGN) {
+		if stmt.Token.Type == token.VAR && stmt.TypeName != "" &&
+			(p.peekTokenIs(token.EOF) || p.peekToken.Line > p.curToken.Line) {
+			return stmt
+		}
+		if !p.expectPeek(token.ASSIGN) {
+			return nil
+		}
+	} else {
+		p.nextToken()
 	}
 
 	p.nextToken()

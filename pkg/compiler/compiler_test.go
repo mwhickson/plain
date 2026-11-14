@@ -3,6 +3,7 @@ package compiler_test
 import (
 	"plain/pkg/compiler"
 	"plain/pkg/parser"
+	"plain/pkg/value"
 	"plain/pkg/vm"
 	"testing"
 )
@@ -547,6 +548,64 @@ func TestCompilerStructs(t *testing.T) {
 	comp := compiler.New()
 	if err := comp.Compile(program); err != nil {
 		t.Fatalf("compiler error: %v", err)
+	}
+}
+
+func TestCompilerDefaultStructValues(t *testing.T) {
+	input := `
+	Const Rooms As List = [
+		CreateRoom(100, "Cave Entrance"),
+		CreateRoom(200, "Crystal Cavern")
+	]
+
+	Struct Room
+		Id As Numeric
+		Name As String
+		Description As String
+	End Struct
+
+	Function CreateRoom(id As Numeric, name As String) As Room
+		Var room As Room
+		room.Id = id
+		room.Name = name
+		Return room
+	End Function
+	`
+
+	p := parser.NewParser(parser.NewLexer(input))
+	program := p.ParseProgram()
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+	machine := vm.NewVM(comp.Bytecode())
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+
+	roomsValue, exists := machine.Globals()[3]
+	if !exists || roomsValue.Type != value.ValList {
+		t.Fatalf("Rooms global = %v, want list", roomsValue)
+	}
+	rooms := roomsValue.Obj.([]value.Value)
+	if len(rooms) != 2 {
+		t.Fatalf("Rooms length = %d, want 2", len(rooms))
+	}
+
+	first := rooms[0].Obj.(map[string]value.Value)
+	second := rooms[1].Obj.(map[string]value.Value)
+	if first["Id"].Num != 100 || first["Name"].Str != "Cave Entrance" {
+		t.Errorf("first room = %v, want Id 100 and Cave Entrance", first)
+	}
+	if first["Description"].Type != value.ValString || first["Description"].Str != "" {
+		t.Errorf("first room Description = %v, want empty String default", first["Description"])
+	}
+	if second["Id"].Num != 200 || second["Name"].Str != "Crystal Cavern" {
+		t.Errorf("second room = %v, want Id 200 and Crystal Cavern", second)
 	}
 }
 
