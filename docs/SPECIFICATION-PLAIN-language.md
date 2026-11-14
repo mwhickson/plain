@@ -27,6 +27,7 @@ PLAIN features a small, opinionated set of primitive and composite types:
 | `None` | Represents the absence of a value | Unit / None singleton |
 | `List` | Dynamic, ordered sequence of elements | Dynamic array |
 | `Struct` | Heterogeneous key-value record and data container | Map / Named record |
+| `Function` | First-class executable blocks, closures, and native builtins | Function / Closure pointer |
 
 ### 2.1 Mutability and Declarations
 Variables are explicitly bound using `Var` (mutable) or `Const` (immutable).
@@ -36,13 +37,17 @@ Const AppName As String = "PLAIN Desktop"
 Var UserCount As Numeric = 42
 ```
 
+### 2.2 Polymorphic Operators
+- **`+` (Addition / Concatenation):** Performs arithmetic addition when both operands are `Numeric`, and string concatenation when both operands are `String`.
+
 ---
 
 ## 3. Syntax Overview
 
-### 3.1 Identifiers & Keywords
+### 3.1 Identifiers, Keywords, and Comments
 - Keywords are case-insensitive (e.g., `Function`, `function`, and `FUNCTION` are equivalent), though **PascalCase** is idiomatic.
 - Statements are line-delimited (newline character). Multiple statements per line are not permitted.
+- **Comments:** Single-quote characters (`'`) denote single-line comments extending to the end of the line.
 
 ### 3.2 Functions
 Functions are the sole executable block unit (there are no separate `Sub` or `Procedure` keywords). 
@@ -54,7 +59,7 @@ Function Add(a As Numeric, b As Numeric) As Numeric
 End Function
 
 Function Greet(name As String)
-    Print("Hello, " + name)
+    Console.Print("Hello, " + name)
     ' Implicitly returns None
 End Function
 ```
@@ -79,11 +84,11 @@ End Function
 #### If Statements
 ```plain
 If count > 10 Then
-    Print("High")
+    Console.Print("High")
 ElseIf count > 5 Then
-    Print("Medium")
+    Console.Print("Medium")
 Else
-    Print("Low")
+    Console.Print("Low")
 End If
 ```
 
@@ -93,13 +98,13 @@ PLAIN features a single `For` construct covering both numeric ranges and list it
 ```plain
 ' Range Loop
 For i As Numeric = 1 To 10 Step 1
-    Print(i)
+    Console.Print(i)
 End For
 
 ' Iteration Loop
 Var items As List = ["Apple", "Banana", "Cherry"]
 For item In items
-    Print(item)
+    Console.Print(item)
 End For
 ```
 
@@ -124,7 +129,9 @@ End Select
 Below is the formal Extended Backus-Naur Form (EBNF) grammar defining PLAIN syntax.
 
 ```ebnf
-Program          = { Statement | FunctionDecl | StructDecl } ;
+Program          = { Statement | FunctionDecl | StructDecl | Comment } ;
+
+Comment          = "'" { any_char_except_newline } ;
 
 Statement        = VarDecl
                  | Assignment
@@ -167,7 +174,7 @@ ReturnStmt       = "Return" [ Expression ] ;
 ExpressionStmt   = Expression ;
 
 (* Types & Expressions *)
-TypeName         = "String" | "Numeric" | "Boolean" | "List" | "Struct" | Identifier ;
+TypeName         = "String" | "Numeric" | "Boolean" | "List" | "Struct" | "Function" | Identifier ;
 ExpressionList   = Expression { "," Expression } ;
 Expression       = LogicalOr ;
 LogicalOr        = LogicalAnd { "Or" LogicalAnd } ;
@@ -195,8 +202,11 @@ Identifier       = letter { letter | digit | "_" } ;
 
 ---
 
-## 5. Execution Model
+## 5. Execution Model & Interactive Tooling
 
 1. **Compilation Strategy:** Source code is parsed into an Abstract Syntax Tree (AST) and compiled into compact PLAIN Bytecode (`.pbc`).
-2. **Virtual Machine (VM):** The bytecode is executed by a lightweight stack-based or register-based VM written in Go.
-3. **Memory Management:** Memory allocation for composite objects (`List`, `Struct`) is handled via underlying host VM garbage collection. All user code is executed under strict pass-by-value guarantees.
+2. **Virtual Machine (VM):** The bytecode is executed by a lightweight stack-based VM written in Go. Core standard library modules (`System`, `Console`) are pre-seeded into low-index global variable slots as native struct namespaces.
+3. **Runtime Error Interception:** Scripts may register a global callback via `System.SetErrorHandler(fn)` to intercept and recover from VM runtime errors.
+4. **Interactive REPL:** Supports dual execution modes:
+   - **Program Mode (Default):** Silently syntax-checks entered statements and buffers them into an in-memory program listing (`list`, `edit`, `save`, `load`, `run`).
+   - **Direct Mode (`!` prefix):** Evaluates lines prefixed with `!` immediately as a scratchpad without modifying the session buffer.

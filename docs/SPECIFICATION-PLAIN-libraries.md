@@ -1,8 +1,14 @@
-# PLAIN Standard Library Proposal ("Batteries Included")
+# PLAIN Standard Library Specification ("Batteries Included")
 
-This proposal outlines the core module layout and candidate function sets for the PLAIN standard library, targeting the desktop application and business utility niches historically occupied by tools like Visual Basic, Delphi, and Xojo.
+This document outlines the core module layout, implemented runtime namespaces, and candidate function sets for the PLAIN standard library, targeting the desktop application and business utility niches historically occupied by tools like Visual Basic, Delphi, and Xojo.
 
-> **THIS IS PRELIMINARY DOCUMENTATION. IT IS SUBJECT TO REVISION**
+> **NOTE:** Modules marked as **Implemented** are active in the current runtime. All other modules represent planned design specifications.
+
+---
+
+## Module Architecture
+
+Standard library modules are exposed as global `Struct` namespaces pre-registered at compile time and bound to low-index global slots in the VM (`System` at slot `0`, `Console` at slot `1`, etc.). Module functions are implemented as native Go `ValBuiltin` callbacks invoked via standard dot-notation property access.
 
 ---
 
@@ -10,243 +16,247 @@ This proposal outlines the core module layout and candidate function sets for th
 
 * **Purpose**: Simple 2D graphics canvas for lightweight retro games and visual rendering.
 * **Functions**:
-* `Box(x1, y1, x2, y2, color)`
-* `Circle(x, y, radius, color)`
-* `Create(width, height)`
-* `Fill(color)`
-* `Line(x1, y1, x2, y2, color)`
-* `Point(x, y, color)`
+  * `Box(x1, y1, x2, y2, color)`
+  * `Circle(x, y, radius, color)`
+  * `Create(width, height)`
+  * `Fill(color)`
+  * `Line(x1, y1, x2, y2, color)`
+  * `Point(x, y, color)`
 
-### Console
+### Console *(Implemented — Global Slot 1)*
 
 * **Purpose**: Standard terminal input, output, screen formatting, and ANSI escape code control.
-* **Functions**:
-* `Cls()` (Clear screen)
-* `CursorTo(row, col)`
-* `Input(prompt)`
-* `Print(text)` / `PrintLine(text)`
-* `ResetColor()`
-* `SetColor(foreground, background)`
+* **Implemented Functions**:
+  * `Cls()` — Clear the terminal screen and reset cursor position.
+  * `Input(prompt)` — Print prompt text and read a line of string input from `stdin`.
+  * `Print(text)` — Output text to `stdout`.
+  * `PrintLine(text)` — Output text followed by a newline to `stdout`.
+* **Planned Functions**:
+  * `CursorTo(row, col)`
+  * `ResetColor()`
+  * `SetColor(foreground, background)`
 
-### CSV
+### CSV *(Planned)*
 
 * **Purpose**: Comma-separated values parsing and tabular data generation.
 * **Functions**:
-* `Parse(csvString)`
-* `ReadRow(fileStream)`
-* `Stringify(tableData)`
-* `WriteRow(fileStream, rowData)`
+  * `Parse(csvString)`
+  * `ReadRow(fileStream)`
+  * `Stringify(tableData)`
+  * `WriteRow(fileStream, rowData)`
 
-### Database
+### Database *(Planned)*
 
 * **Purpose**: Embedded SQLite database operations for lightweight local persistence.
 * **Functions**:
-* `BeginTx(db)`
-* `Close(db)`
-* `Commit(tx)` / `Rollback(tx)`
-* `Execute(db, sql, params...)`
-* `Open(path)`
-* `Query(db, sql, params...)`
+  * `BeginTx(db)`
+  * `Close(db)`
+  * `Commit(tx)` / `Rollback(tx)`
+  * `Execute(db, sql, params...)`
+  * `Open(path)`
+  * `Query(db, sql, params...)`
 
-### Debugging
+### Debugging *(Planned)*
 
-* **Purpose**: Debugging support.
+* **Purpose**: Runtime inspection and debugging support.
 * **Functions**:
-* TODO:
+  * *TBD*
 
 ### Decimal *(Candidate / Future)*
 
 * **Purpose**: Fixed-point arithmetic and rounding modes for accurate financial, accounting, and currency calculations without floating-point discrepancies.
 * **Functions**:
-* `Add(a, b)`, `Sub(a, b)`, `Mul(a, b)`, `Div(a, b)`
-* `FormatCurrency(amount, pictureClause)`
-* `FromString(numericString)`
-* `RoundBankers(amount, decimals)`
+  * `Add(a, b)`, `Sub(a, b)`, `Mul(a, b)`, `Div(a, b)`
+  * `FormatCurrency(amount, pictureClause)`
+  * `FromString(numericString)`
+  * `RoundBankers(amount, decimals)`
 
 ### Email *(Candidate / Future)*
 
 * **Purpose**: Automated SMTP messaging and report delivery for business alerts and workflows.
 * **Functions**:
-* `AttachFile(message, filePath)`
-* `ConfigureSMTP(host, port, username, password)`
-* `CreateMessage(to, subject, body)`
-* `Send(message)`
+  * `AttachFile(message, filePath)`
+  * `ConfigureSMTP(host, port, username, password)`
+  * `CreateMessage(to, subject, body)`
+  * `Send(message)`
 
-### Environment
+### Environment *(Planned)*
 
 * **Purpose**: Platform-specific system inspection, path resolution, and variable access.
 * **Functions**:
-* `GetArchitecture()`
-* `GetEnv(name)` / `SetEnv(name, value)`
-* `GetPlatform()`
-* `GetTempDir()` / `GetHomeDir()`
-* `IsBigEndian()`
+  * `GetArchitecture()`
+  * `GetEnv(name)` / `SetEnv(name, value)`
+  * `GetPlatform()`
+  * `GetTempDir()` / `GetHomeDir()`
+  * `IsBigEndian()`
 
-### File
+### File *(Planned)*
 
 * **Purpose**: Synchronous and stream-based file system input/output.
 * **Functions**:
-* `Append(path, data)`
-* `Copy(src, dest)`
-* `Delete(path)`
-* `Exists(path)`
-* `Open(path, mode)`
-* `Read(file)` / `ReadAll(path)`
-* `Write(file, data)` / `WriteAll(path, data)`
+  * `Append(path, data)`
+  * `Copy(src, dest)`
+  * `Delete(path)`
+  * `Exists(path)`
+  * `Open(path, mode)`
+  * `Read(file)` / `ReadAll(path)`
+  * `Write(file, data)` / `WriteAll(path, data)`
 
 ### Forms *(Reserved / Future)*
 
 * **Purpose**: Platform-dependent native GUI windowing and control management.
 * **Functions**:
-* `AddButton(window, label, onClick)`
-* `AddTextBox(window, initialText)`
-* `CreateWindow(title, width, height)`
-* `ShowModal(window)`
+  * `AddButton(window, label, onClick)`
+  * `AddTextBox(window, initialText)`
+  * `CreateWindow(title, width, height)`
+  * `ShowModal(window)`
 
-### Image
+### Image *(Planned)*
 
 * **Purpose**: Loading, saving, and manipulating raster image assets.
 * **Functions**:
-* `Crop(image, x, y, width, height)`
-* `GetPixel(image, x, y)`
-* `Load(path)`
-* `Resize(image, width, height)`
-* `Save(image, path)`
-* `SetPixel(image, x, y, color)`
+  * `Crop(image, x, y, width, height)`
+  * `GetPixel(image, x, y)`
+  * `Load(path)`
+  * `Resize(image, width, height)`
+  * `Save(image, path)`
+  * `SetPixel(image, x, y, color)`
 
-### Input
+### Input *(Planned)*
 
 * **Purpose**: Low-level hardware polling for keyboards, mice, and joysticks.
 * **Functions**:
-* `GetJoystickAxis(joyId, axisId)`
-* `GetMouseX()` / `GetMouseY()`
-* `IsKeyDown(keyCode)`
-* `IsMouseButtonDown(buttonCode)`
+  * `GetJoystickAxis(joyId, axisId)`
+  * `GetMouseX()` / `GetMouseY()`
+  * `IsKeyDown(keyCode)`
+  * `IsMouseButtonDown(buttonCode)`
 
-### JSON
+### JSON *(Planned)*
 
 * **Purpose**: JSON parsing, serialization, and structure traversal.
 * **Functions**:
-* `GetPath(object, pathExpression)`
-* `Parse(jsonString)`
-* `Stringify(value)`
+  * `GetPath(object, pathExpression)`
+  * `Parse(jsonString)`
+  * `Stringify(value)`
 
-### List
+### List *(Planned)*
 
 * **Purpose**: High-order collection utilities for searching, sorting, and transforming lists.
 * **Functions**:
-* `Contains(list, value)`
-* `Filter(list, predicateFn)`
-* `Find(list, predicateFn)`
-* `Map(list, transformFn)`
-* `Reverse(list)`
-* `Sort(list, comparatorFn)`
+  * `Contains(list, value)`
+  * `Filter(list, predicateFn)`
+  * `Find(list, predicateFn)`
+  * `Map(list, transformFn)`
+  * `Reverse(list)`
+  * `Sort(list, comparatorFn)`
 
 ### Locale *(Candidate / Future)*
 
 * **Purpose**: Regional formatting for dates, numbers, thousands separators, and currency symbols.
 * **Functions**:
-* `FormatCurrency(amount, localeCode)`
-* `FormatDate(timestamp, localeCode)`
-* `FormatNumber(number, localeCode)`
-* `GetSystemLocale()`
+  * `FormatCurrency(amount, localeCode)`
+  * `FormatDate(timestamp, localeCode)`
+  * `FormatNumber(number, localeCode)`
+  * `GetSystemLocale()`
 
 ### Log *(Candidate / Future)*
 
 * **Purpose**: Structured application logging and audit trails with severity levels and file redirection.
 * **Functions**:
-* `Debug(message)`
-* `Error(message)`
-* `Info(message)`
-* `SetLevel(level)`
-* `SetOutputFile(path)`
-* `Warn(message)`
+  * `Debug(message)`
+  * `Error(message)`
+  * `Info(message)`
+  * `SetLevel(level)`
+  * `SetOutputFile(path)`
+  * `Warn(message)`
 
-### Math
+### Math *(Planned)*
 
 * **Purpose**: Business, programmer, and scientific mathematical operations.
 * **Functions**:
-* `Abs(n)`, `Floor(n)`, `Ceil(n)`, `Round(n, decimals)`
-* `Log(n)`, `Exp(n)`, `Pow(base, exp)`, `Sqrt(n)`
-* `Min(a, b)`, `Max(a, b)`
-* `Sin(n)`, `Cos(n)`, `Tan(n)`, `Asin(n)`, `Acos(n)`, `Atan(n)`
+  * `Abs(n)`, `Floor(n)`, `Ceil(n)`, `Round(n, decimals)`
+  * `Log(n)`, `Exp(n)`, `Pow(base, exp)`, `Sqrt(n)`
+  * `Min(a, b)`, `Max(a, b)`
+  * `Sin(n)`, `Cos(n)`, `Tan(n)`, `Asin(n)`, `Acos(n)`, `Atan(n)`
 
-### Network
+### Network *(Planned)*
 
 * **Purpose**: Lightweight HTTP client capabilities for web requests and API integration.
 * **Functions**:
-* `Delete(url)`
-* `Get(url)`
-* `Post(url, body)`
-* `Put(url, body)`
-* `SetHeader(key, value)`
+  * `Delete(url)`
+  * `Get(url)`
+  * `Post(url, body)`
+  * `Put(url, body)`
+  * `SetHeader(key, value)`
 
-### Sound
+### Sound *(Planned)*
 
 * **Purpose**: Audio playback for sound effects and basic background tracks.
 * **Functions**:
-* `LoadSound(path)`
-* `PlaySound(sound)`
-* `SetVolume(sound, level)`
-* `StopSound(sound)`
+  * `LoadSound(path)`
+  * `PlaySound(sound)`
+  * `SetVolume(sound, level)`
+  * `StopSound(sound)`
 
-### String
+### String *(Planned)*
 
 * **Purpose**: Advanced text manipulation, substring extraction, pattern matching, and encoding utilities.
 * **Functions**:
-* `Base64Encode(str)` / `Base64Decode(str)`
-* `ExtractRegex(str, pattern)`
-* `Join(list, delimiter)`
-* `Left(str, count)`
-* `Len(str)`
-* `Lower(str)` / `Upper(str)`
-* `MatchRegex(str, pattern)`
-* `Mid(str, start, length)`
-* `Replace(str, target, replacement)`
-* `ReplaceRegex(str, pattern, replacement)`
-* `Right(str, count)`
-* `Split(str, delimiter)`
+  * `Base64Encode(str)` / `Base64Decode(str)`
+  * `ExtractRegex(str, pattern)`
+  * `Join(list, delimiter)`
+  * `Left(str, count)`
+  * `Len(str)`
+  * `Lower(str)` / `Upper(str)`
+  * `MatchRegex(str, pattern)`
+  * `Mid(str, start, length)`
+  * `Replace(str, target, replacement)`
+  * `ReplaceRegex(str, pattern, replacement)`
+  * `Right(str, count)`
+  * `Split(str, delimiter)`
 
-### Struct
+### Struct *(Planned)*
 
 * **Purpose**: Structural reflection, key enumeration, and layout serialization.
 * **Functions**:
-* `FromJson(jsonString, structTypeName)`
-* `HasKey(structInstance, keyName)`
-* `Keys(structInstance)`
-* `ToJson(structInstance)`
+  * `FromJson(jsonString, structTypeName)`
+  * `HasKey(structInstance, keyName)`
+  * `Keys(structInstance)`
+  * `ToJson(structInstance)`
 
-### System
+### System *(Implemented — Global Slot 0)*
 
-* **Purpose**: Process execution, shell spawning, and OS-level control.
+* **Purpose**: Runtime error interception, process termination, shell spawning, and OS-level control.
+* **Implemented Functions**:
+  * `Exit(code)` — Terminate execution with a numeric exit status code.
+  * `SetErrorHandler(handlerFn)` — Register a global callback function or closure to intercept VM runtime faults.
+* **Planned Functions**:
+  * `Exec(command, args...)`
+  * `GetPID()`
+  * `Sleep(milliseconds)`
+  * `Spawn(command, args...)`
+
+### Testing *(Planned)*
+
+* **Purpose**: Software testing and assertion support.
 * **Functions**:
-* `Exec(command, args...)`
-* `Exit(code)`
-* `GetPID()`
-* `Sleep(milliseconds)`
-* `Spawn(command, args...)`
+  * *TBD*
 
-### Testing
-
-* **Purpose**: Software testing support.
-* **Functions**:
-* TODO:
-
-### Time
+### Time *(Planned)*
 
 * **Purpose**: Temporal calculations, formatting, and date-time manipulation.
 * **Functions**:
-* `AddDays(timestamp, days)`
-* `Diff(timestampA, timestampB)`
-* `Format(timestamp, layout)`
-* `Now()`
-* `Parse(dateString, layout)`
-* `Year(t)`, `Month(t)`, `Day(t)`, `Hour(t)`, `Minute(t)`, `Second(t)`
+  * `AddDays(timestamp, days)`
+  * `Diff(timestampA, timestampB)`
+  * `Format(timestamp, layout)`
+  * `Now()`
+  * `Parse(dateString, layout)`
+  * `Year(t)`, `Month(t)`, `Day(t)`, `Hour(t)`, `Minute(t)`, `Second(t)`
 
-### XML
+### XML *(Planned)*
 
 * **Purpose**: Structured XML document parsing and querying.
 * **Functions**:
-* `Parse(xmlString)`
-* `Query(node, xpath)`
-* `ToString(node)`
+  * `Parse(xmlString)`
+  * `Query(node, xpath)`
+  * `ToString(node)`

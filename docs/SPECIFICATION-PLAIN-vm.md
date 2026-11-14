@@ -4,9 +4,9 @@ This document defines the architecture, instruction set, execution model, and va
 
 ## 1. Overview
 
-The PLAIN Virtual Machine is a lightweight, stack-based runtime written in Go. It operates on compiled PLAIN Bytecode (`.pbc`) chunks, managing execution frames, global/local variable storage, and memory for dynamic runtime values.
+The PLAIN Virtual Machine is a lightweight, stack-based runtime written in Go. It operates on compiled PLAIN Bytecode (`.pbc`) chunks, managing execution frames, global/local variable storage, closure upvalues, and memory for dynamic runtime values.
 
-```
+```text
        +------------------------------------+
        |          Bytecode Chunk            |
        |  - Code Stream: []byte             |
@@ -18,10 +18,16 @@ The PLAIN Virtual Machine is a lightweight, stack-based runtime written in Go. I
 |                    PLAIN VM                      |
 |                                                  |
 |  +--------------------+    +------------------+  |
-|  |   Value Stack      |    |    Call Frame    |  |
-|  |  [ Val1, Val2... ] |    |  - Inst Pointer  |  |
-|  +--------------------+    |  - Local Map     |  |
-|                            +------------------+  |
+|  |   Value Stack      |    |   Call Frames    |  |
+|  |  [ Val1, Val2... ] |    |  - Closure Ptr   |  |
+|  +--------------------+    |  - Inst Pointer  |  |
+|                            |  - Base Pointer  |  |
+|  +--------------------+    +------------------+  |
+|  |   Global Slots     |                          |
+|  |  0: System         |                          |
+|  |  1: Console        |                          |
+|  |  2..N: User Vars   |                          |
+|  +--------------------+                          |
 +--------------------------------------------------+
 ```
 
@@ -29,72 +35,89 @@ The PLAIN Virtual Machine is a lightweight, stack-based runtime written in Go. I
 
 ## 2. Value Representation
 
-PLAIN utilizes dynamic scalar types and explicit composite types. Values on the execution stack and in local/global storage are encapsulated in a tagged union structure:
+PLAIN utilizes dynamic runtime value wrappers (`value.Value`) to store scalar primitives, composite data structures, and executable objects on the evaluation stack and in variable tables.
 
-### 2.1 Type Tags
-- `0x00` — `ValNone`: Represents an empty or default return value.
-- `0x01` — `ValNumeric`: IEEE 754 64-bit floating-point number.
-- `0x02` — `ValString`: UTF-8 immutable string.
-- `0x03` — `ValBoolean`: Boolean flag (`True` / `False`).
-- `0x04` — `ValList`: Reference to a dynamic array of `Value` objects.
-- `0x05` — `ValStruct`: Reference to a key-value map (`string -> Value`).
+### 2.1 Value Types
+- `ValNone` — Represents an empty or default return value (`None`).
+- `ValNumeric` — IEEE 754 64-bit floating-point number (`float64`).
+- `ValString` — UTF-8 immutable string (`string`).
+- `ValBoolean` — Boolean flag (`True` / `False`).
+- `ValList` — Reference to a dynamic slice of `Value` objects (`[]value.Value`).
+- `ValStruct` — Reference to a key-value map (`map[string]value.Value`), used for both user-defined structs and standard library module namespaces.
+- `ValFunction` — Compiled function prototype (`*value.FunctionObject`) containing start IP, parameter count, and local variable count.
+- `ValClosure` — Instantiated lexical closure (`*value.ClosureObject`) wrapping a `FunctionObject` and captured `Free` variables.
+- `ValBuiltin` — Native Go function callback (`func(args []value.Value) (value.Value, error)`).
 
 ---
 
 ## 3. Bytecode Structure & Constants Pool
 
-A compiled PLAIN program byte array consists of two primary tables:
-1. **Constant Pool:** An indexed array of static literal values (strings, large numbers, predefined structures) referenced by byte index.
-2. **Instruction Stream:** A sequential byte array containing Opcodes and their zero-or-more single-byte or multi-byte operands.
+A compiled PLAIN program chunk consists of two primary structures:
+1. **Constant Pool (`Constants`):** An indexed slice of static literal values (strings, numbers, function prototypes) referenced by 1-byte index.
+2. **Instruction Stream (`Code`):** A sequential byte slice containing 1-byte Opcodes followed by zero or more 1-byte or 2-byte (little-endian `uint16`) operands.
 
 ---
 
 ## 4. Instruction Set Architecture (Opcodes)
 
-All opcodes are 1-byte wide (`uint8`). Operands immediately follow their respective opcode in the instruction stream.
+All opcodes are 1-byte wide. Operands immediately follow their respective opcode in the instruction stream.
 
-| Hex Opcode | Mnemonic | Operands | Stack Diagram `(before -> after)` | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `0x00` | `OP_NOP` | None | `[] -> []` | No operation. |
-| `0x01` | `OP_PUSH_CONST` | `const_idx` (1 byte) | `[] -> [val]` | Pushes constant from `Constants[const_idx]` to stack. |
-| `0x02` | `OP_PUSH_NONE` | None | `[] -> [None]` | Pushes a `ValNone` onto stack. |
-| `0x03` | `OP_PUSH_TRUE` | None | `[] -> [True]` | Pushes boolean `True`. |
-| `0x04` | `OP_PUSH_FALSE` | None | `[] -> [False]` | Pushes boolean `False`. |
-| `0x05` | `OP_POP` | None | `[val] -> []` | Removes top value from stack. |
-| `0x10` | `OP_ADD` | None | `[b, a] -> [a + b]` | Pops `b` and `a`, pushes sum. Concatenates if strings. |
-| `0x11` | `OP_SUB` | None | `[b, a] -> [a - b]` | Pops `b` and `a`, pushes `a - b`. |
-| `0x12` | `OP_MUL` | None | `[b, a] -> [a * b]` | Pops `b` and `a`, pushes product. |
-| `0x13` | `OP_DIV` | None | `[b, a] -> [a / b]` | Pops `b` and `a`, pushes quotient. Division by zero triggers runtime error. |
-| `0x14` | `OP_MOD` | None | `[b, a] -> [a % b]` | Pops `b` and `a`, pushes modulo. |
-| `0x15` | `OP_NEGATE` | None | `[a] -> [-a]` | Negates top numeric value on stack. |
-| `0x20` | `OP_EQ` | None | `[b, a] -> [bool]` | Pushes `True` if `a == b`, else `False`. |
-| `0x21` | `OP_NEQ` | None | `[b, a] -> [bool]` | Pushes `True` if `a != b`, else `False`. |
-| `0x22` | `OP_LT` | None | `[b, a] -> [bool]` | Pushes `True` if `a < b`, else `False`. |
-| `0x23` | `OP_LTE` | None | `[b, a] -> [bool]` | Pushes `True` if `a <= b`, else `False`. |
-| `0x24` | `OP_GT` | None | `[b, a] -> [bool]` | Pushes `True` if `a > b`, else `False`. |
-| `0x25` | `OP_GTE` | None | `[b, a] -> [bool]` | Pushes `True` if `a >= b`, else `False`. |
-| `0x30` | `OP_STORE_VAR` | `var_idx` (1 byte) | `[val] -> []` | Stores top value into variable table slot `var_idx`. |
-| `0x31` | `OP_LOAD_VAR` | `var_idx` (1 byte) | `[] -> [val]` | Loads value from variable table slot `var_idx` to stack. |
-| `0x40` | `OP_JUMP` | `offset` (2 bytes) | `[] -> []` | Unconditionally jumps instruction pointer forward. |
-| `0x41` | `OP_JUMP_IF_FALSE` | `offset` (2 bytes) | `[bool] -> []` | Pops stack value; jumps if value is `False`. |
-| `0x50` | `OP_CALL` | `arg_count` (1 byte) | `[fn, arg1...]` | Creates new CallFrame and transfers execution to `fn`. |
-| `0x51` | `OP_RETURN` | None | `[ret] -> [ret]` | Destroys current CallFrame, returning control to caller. |
-| `0xFF` | `OP_HALT` | None | `[] -> []` | Terminate execution of virtual machine loop. |
+| Mnemonic | Operands | Stack Effect `(before -> after)` | Description |
+| :--- | :--- | :--- | :--- |
+| `OpPushConst` | `const_idx` (1 byte) | `[] -> [val]` | Pushes constant from `Constants[const_idx]` onto the stack. |
+| `OpAdd` | None | `[a, b] -> [a + b]` | Pops `b` and `a`. Adds `Numeric` values or concatenates `String` values. |
+| `OpSub` | None | `[a, b] -> [a - b]` | Pops `b` and `a`, pushes `a - b`. |
+| `OpMul` | None | `[a, b] -> [a * b]` | Pops `b` and `a`, pushes `a * b`. |
+| `OpDiv` | None | `[a, b] -> [a / b]` | Pops `b` and `a`, pushes `a / b`. Division by zero triggers runtime error. |
+| `OpEq` | None | `[a, b] -> [bool]` | Pushes `True` if `a == b`, else `False`. |
+| `OpNeq` | None | `[a, b] -> [bool]` | Pushes `True` if `a != b`, else `False`. |
+| `OpLt` | None | `[a, b] -> [bool]` | Pushes `True` if `a < b`, else `False`. |
+| `OpLte` | None | `[a, b] -> [bool]` | Pushes `True` if `a <= b`, else `False`. |
+| `OpGt` | None | `[a, b] -> [bool]` | Pushes `True` if `a > b`, else `False`. |
+| `OpGte` | None | `[a, b] -> [bool]` | Pushes `True` if `a >= b`, else `False`. |
+| `OpStoreVar` | `var_idx` (1 byte) | `[val] -> []` | Pops top value and stores it into global slot `var_idx`. |
+| `OpLoadVar` | `var_idx` (1 byte) | `[] -> [val]` | Pushes value from global slot `var_idx` onto the stack. |
+| `OpStoreLocal` | `slot_idx` (1 byte) | `[val] -> []` | Pops top value and stores it at `frame.basePointer + slot_idx`. |
+| `OpLoadLocal` | `slot_idx` (1 byte) | `[] -> [val]` | Pushes value from `frame.basePointer + slot_idx` onto the stack. |
+| `OpLoadFree` | `free_idx` (1 byte) | `[] -> [val]` | Pushes captured closure variable from `frame.closure.Free[free_idx]`. |
+| `OpBuildList` | `count` (1 byte) | `[e1..eN] -> [list]` | Pops `count` elements and constructs a `ValList`. |
+| `OpIndex` | None | `[list, idx] -> [val]` | Indexes `list[idx]` and pushes the resulting element. |
+| `OpGetProperty` | `const_idx` (1 byte) | `[struct] -> [val]` | Pops `struct`, looks up property named by `Constants[const_idx]`, pushes value. |
+| `OpSetProperty` | `const_idx` (1 byte) | `[struct, val] -> []` | Pops `val` and `struct`, sets property named by `Constants[const_idx]` to `val`. |
+| `OpJump` | `target` (2 bytes) | `[] -> []` | Unconditionally sets `IP` to 16-bit absolute target offset. |
+| `OpJumpIfFalse` | `target` (2 bytes) | `[cond] -> []` | Pops condition; sets `IP` to `target` if falsy (`False`, `0`, or `None`). |
+| `OpClosure` | `const_idx` (1B), `num_free` (1B) | `[f1..fN] -> [closure]` | Pops `num_free` captured values, wraps function at `const_idx` into `ValClosure`. |
+| `OpCall` | `arg_count` (1 byte) | `[fn, a1..aN] -> [ret]` | Invokes `ValBuiltin`, `ValFunction`, or `ValClosure` with `arg_count` arguments. |
+| `OpReturn` | None | `[ret] -> [ret]` | Pops active `Frame`, restores caller `IP` and stack pointer, pushes `ret`. |
+| `OpHalt` | None | `[] -> []` | Cleanly terminates the virtual machine execution loop. |
 
 ---
 
-## 5. Execution Loop Model
-
-The core VM execution loop operates on an Instruction Pointer (`IP`) referencing the currently active `CallFrame`:
+## 5. Execution Model & Frame Management
 
 ```go
+type Frame struct {
+    closure     *value.ClosureObject
+    ip          int
+    basePointer int
+}
+
 type VM struct {
-    frames     [64]CallFrame
-    frameCount int
-    stack      [1024]Value
-    sp         int // Stack Pointer
+    chunk      *bytecode.Chunk
+    ip         int
+    stack      []value.Value
+    globals    map[byte]value.Value
+    frames     []Frame
+    frameIndex int
 }
 ```
 
-- **Stack Overflow / Underflow Checks:** Evaluated dynamically during execution.
-- **Pass-By-Value Handling:** Composite structures (`List`, `Struct`) passed as arguments or assignments trigger a copy-on-write or deep duplicate to guarantee pure value-semantics at runtime.
+### 5.1 Pre-Seeded Global Slots
+Upon initialization (`NewVM`), the VM populates reserved global variable slots before script execution begins:
+- **Slot `0`:** `System` module (`SetErrorHandler`, `Exit`)
+- **Slot `1`:** `Console` module (`Print`, `PrintLine`, `Input`, `Cls`)
+
+### 5.2 Runtime Error Interception (`handleError`)
+If an instruction produces a runtime fault (such as division by zero, type mismatch, or out-of-bounds list indexing), the VM checks whether a handler has been registered via `System.SetErrorHandler`.
+- If registered, the VM saves the active frame's `ip`, allocates a new `Frame` for the handler function/closure, passes the error message as a `ValString` argument, and resumes execution inside the handler.
+- When the handler executes `OpReturn`, control resumes cleanly from the saved instruction pointer.
