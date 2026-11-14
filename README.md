@@ -29,27 +29,6 @@ PLAIN, and its associated tooling, is intended to fill software development nich
 
 ## Language Examples
 
-### System
-```plain
-Function MyErrorHandler(errMsg As String)
-    Console.Print("Caught runtime error: " + errMsg)
-End Function
-
-System.SetErrorHandler(MyErrorHandler)
-
-' This will trigger a division by zero error, caught by MyErrorHandler
-Var x As Numeric = 10 / 0
-Console.Print("Program continued successfully after error.")
-```
-
-### Console I/O and Variables
-```plain
-' Prompt the user and greet them
-Console.Print("Hello from the PLAIN standard library!")
-Var name As String = Console.Input("What is your name? ")
-Console.Print("Nice to meet you, " + name)
-```
-
 ### Variables and Control Flow
 ```plain
 Var total As Numeric = 0
@@ -87,6 +66,27 @@ Function (v As Vector2D) Scale(factor As Numeric)
 End Function
 ```
 
+### System
+```plain
+Function MyErrorHandler(errMsg As String)
+    Console.Print("Caught runtime error: " + errMsg)
+End Function
+
+System.SetErrorHandler(MyErrorHandler)
+
+' This will trigger a division by zero error, caught by MyErrorHandler
+Var x As Numeric = 10 / 0
+Console.Print("Program continued successfully after error.")
+```
+
+### Console I/O and Variables
+```plain
+' Prompt the user and greet them
+Console.Print("Hello from the PLAIN standard library!")
+Var name As String = Console.Input("What is your name? ")
+Console.Print("Nice to meet you, " + name)
+```
+
 ## Usage
 
 ### Running a Source File
@@ -101,7 +101,7 @@ Launch the CLI without arguments to start the interactive REPL:
 go run cmd/plain/main.go
 ```
 
-### Program Mode vs. Direct Mode
+#### Program Mode vs. Direct Mode
 
 - **Program Mode (Default)**: Entering standard PLAIN statements validates syntax silently and appends the line to the active session buffer without executing it. Use run to execute the buffered script.
 - **Direct Mode (! prefix)**: Prefixing an expression or statement with ! (e.g., !10 + 20 or !Console.Cls()) bypasses the session buffer and evaluates the line immediately.
