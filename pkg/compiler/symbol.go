@@ -9,9 +9,10 @@ const (
 )
 
 type Symbol struct {
-	Name  string
-	Scope SymbolScope
-	Index byte
+	Name      string
+	Scope     SymbolScope
+	Index     byte
+	Immutable bool
 }
 
 type SymbolTable struct {
@@ -78,9 +79,10 @@ func (s *SymbolTable) defineFree(original Symbol) Symbol {
 	}
 
 	freeSymbol := Symbol{
-		Name:  original.Name,
-		Scope: FreeScope,
-		Index: byte(len(s.FreeSymbols)),
+		Name:      original.Name,
+		Scope:     FreeScope,
+		Index:     byte(len(s.FreeSymbols)),
+		Immutable: original.Immutable,
 	}
 	s.FreeSymbols = append(s.FreeSymbols, original)
 	return freeSymbol

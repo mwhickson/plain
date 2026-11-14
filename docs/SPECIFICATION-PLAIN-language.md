@@ -30,7 +30,8 @@ PLAIN features a small, opinionated set of primitive and composite types:
 | `Function` | First-class executable blocks, closures, and native builtins | Function / Closure pointer |
 
 ### 2.1 Mutability and Declarations
-Variables are explicitly bound using `Var` (mutable) or `Const` (immutable).
+Variables are explicitly bound using `Var` (mutable) or `Const` (immutable). Assigning
+to a `Const` binding is a compile-time error.
 
 ```plain
 Const AppName As String = "PLAIN Desktop"
@@ -204,9 +205,9 @@ Identifier       = letter { letter | digit | "_" } ;
 
 ## 5. Execution Model & Interactive Tooling
 
-1. **Compilation Strategy:** Source code is parsed into an Abstract Syntax Tree (AST) and compiled into compact PLAIN Bytecode (`.pbc`).
+1. **Compilation Strategy:** Source code is parsed into an Abstract Syntax Tree (AST) and compiled into compact PLAIN Bytecode (`.pbc`). Top-level functions are initialized before executable top-level statements, so functions can be called before their declarations.
 2. **Virtual Machine (VM):** The bytecode is executed by a lightweight stack-based VM written in Go. Core standard library modules (`System`, `Console`) are pre-seeded into low-index global variable slots as native struct namespaces.
-3. **Runtime Error Interception:** Scripts may register a global callback via `System.SetErrorHandler(fn)` to intercept and recover from VM runtime errors.
+3. **Runtime Error Interception:** Scripts may register a callback via `System.SetErrorHandler(fn)` to intercept and recover from VM runtime errors. `System.Exit(code)` stops execution and makes the command-line runner exit with that status; exit requests are not runtime errors and are not passed to the handler.
 4. **Interactive REPL:** Supports dual execution modes:
    - **Program Mode (Default):** Silently syntax-checks entered statements and buffers them into an in-memory program listing (`list`, `edit`, `save`, `load`, `run`).
    - **Direct Mode (`!` prefix):** Evaluates lines prefixed with `!` immediately as a scratchpad without modifying the session buffer.

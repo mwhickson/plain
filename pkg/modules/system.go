@@ -5,6 +5,14 @@ import (
 	"plain/pkg/value"
 )
 
+type ExitRequest struct {
+	Code int
+}
+
+func (e *ExitRequest) Error() string {
+	return fmt.Sprintf("EXIT_REQUESTED_%d", e.Code)
+}
+
 // Global reference for the registered runtime error handler function/closure
 var GlobalErrorHandler value.Value
 
@@ -31,8 +39,7 @@ func GetSystemModule() value.Value {
 				if len(args) > 0 && args[0].Type == value.ValNumeric {
 					code = args[0].Num
 				}
-				// Can be handled or trigger exit
-				return value.NewNone(), fmt.Errorf("EXIT_REQUESTED_%d", int(code))
+				return value.NewNone(), &ExitRequest{Code: int(code)}
 			}),
 		},
 	}

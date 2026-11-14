@@ -228,7 +228,7 @@ Standard library modules are exposed as global `Struct` namespaces pre-registere
 
 * **Purpose**: Runtime error interception, process termination, shell spawning, and OS-level control.
 * **Implemented Functions**:
-  * `Exit(code)` — Terminate execution with a numeric exit status code.
+  * `Exit(code)` — Stop script execution; the command-line runner exits with the supplied numeric status code. Exit requests are not passed to the runtime error handler.
   * `SetErrorHandler(handlerFn)` — Register a global callback function or closure to intercept VM runtime faults.
 * **Planned Functions**:
   * `Exec(command, args...)`

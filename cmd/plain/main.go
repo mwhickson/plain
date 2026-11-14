@@ -48,6 +48,9 @@ func runSource(source string) {
 		fmt.Fprintln(os.Stderr, "VM runtime error:", err)
 		os.Exit(1)
 	}
+	if exitCode, requested := machine.ExitCode(); requested {
+		os.Exit(exitCode)
+	}
 }
 
 func startREPL() {

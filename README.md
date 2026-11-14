@@ -195,4 +195,4 @@ plain/
 
 ## Disclaimer
 
-This application was produced using AI (Gemini).
+This application was produced using AI (Gemini and Copilot).

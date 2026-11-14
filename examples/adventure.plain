@@ -1,0 +1,17 @@
+'
+' adventure.plain
+' 2026-11-14 : Matthew Hickson
+'
+
+System.SetErrorHandler(MyErrorHandler)
+Const Result As Numeric = Main()
+System.Exit(Result)
+
+Function Main() As Numeric
+	Console.PrintLine("Adventure!")
+	Return 0
+End Function
+
+Function MyErrorHandler(errMsg As String)
+    Console.Print("Caught runtime error: " + errMsg)
+End Function

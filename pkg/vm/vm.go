@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"errors"
 	"fmt"
 	"plain/pkg/bytecode"
 	"plain/pkg/modules"
@@ -14,6 +15,8 @@ type VM struct {
 	globals    map[byte]value.Value // Variable storage slot
 	frames     []Frame
 	frameIndex int
+	exitCode   int
+	exited     bool
 }
 
 func NewVM(chunk *bytecode.Chunk) *VM {
@@ -29,6 +32,7 @@ func NewVM(chunk *bytecode.Chunk) *VM {
 	// Bind standard modules to global slots
 	vm.globals[0] = modules.GetSystemModule()
 	vm.globals[1] = modules.GetConsoleModule()
+	modules.GlobalErrorHandler = value.NewNone()
 
 	// Setup root frame for main script
 	vm.frames[0] = Frame{
@@ -106,6 +110,10 @@ func (vm *VM) Globals() map[byte]value.Value {
 	return vm.globals
 }
 
+func (vm *VM) ExitCode() (int, bool) {
+	return vm.exitCode, vm.exited
+}
+
 func (vm *VM) Pop() (value.Value, error) {
 	length := len(vm.stack)
 	if length == 0 {
@@ -121,8 +129,18 @@ func (vm *VM) Push(val value.Value) {
 }
 
 func (vm *VM) Run() error {
+	if vm.exited {
+		return nil
+	}
+
 	err := vm.runLoop()
 	if err != nil {
+		var exitRequest *modules.ExitRequest
+		if errors.As(err, &exitRequest) {
+			vm.exitCode = exitRequest.Code
+			vm.exited = true
+			return nil
+		}
 		return vm.handleError(err)
 	}
 	return nil
@@ -194,8 +212,7 @@ func (vm *VM) runLoop() error {
 				// Push result onto the stack
 				vm.stack = append(vm.stack, result)
 			} else {
-				numArgs := int(vm.chunk.Code[vm.ip])
-				vm.ip++
+				numArgs := argCount
 
 				// Pop arguments in reverse order
 				args := make([]value.Value, numArgs)

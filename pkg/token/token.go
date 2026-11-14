@@ -7,6 +7,7 @@ const (
 	ASSIGN   = "="
 	ASTERISK = "*"
 	COMMA    = ","
+	CONST    = "CONST"
 	ELSE     = "ELSE"
 	END      = "END"
 	EOF      = "EOF"
@@ -59,6 +60,7 @@ var keywords = map[string]TokenType{
 	"Then":     THEN,
 	"To":       TO,
 	"True":     TRUE,
+	"Const":    CONST,
 	"Var":      VAR,
 }
 

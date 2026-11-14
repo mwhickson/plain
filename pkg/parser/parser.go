@@ -521,7 +521,7 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseReturnStatement()
 	case token.STRUCT:
 		return p.parseStructStatement()
-	case token.VAR:
+	case token.VAR, token.CONST:
 		return p.parseVarStatement()
 	default:
 		// Check if this is an assignment statement (e.g. x = 10 or v.X = 20)

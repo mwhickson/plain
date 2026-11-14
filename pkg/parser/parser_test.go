@@ -32,3 +32,17 @@ func TestVarStatement(t *testing.T) {
 		t.Errorf("stmt.String() wrong. got=%q", stmt.String())
 	}
 }
+
+func TestConstStatement(t *testing.T) {
+	input := `Const answer As Numeric = 42`
+
+	p := parser.NewParser(parser.NewLexer(input))
+	program := p.ParseProgram()
+
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+	if got := program.Statements[0].String(); got != "Const answer As Numeric = 42" {
+		t.Errorf("statement string = %q, want %q", got, "Const answer As Numeric = 42")
+	}
+}

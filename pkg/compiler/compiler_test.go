@@ -167,7 +167,7 @@ func TestCompilerRangeLoop(t *testing.T) {
 	}
 
 	// sum should hold 15 (1 + 2 + 3 + 4 + 5)
-	sumVal, exists := machine.Globals()[0] // assuming sum is slot 0
+	sumVal, exists := machine.Globals()[2] // Slots 0 and 1 are reserved for System and Console.
 	if !exists {
 		t.Fatalf("expected variable 'sum' in globals")
 	}
@@ -206,12 +206,67 @@ func TestCompilerFunctionCall(t *testing.T) {
 	}
 
 	// Verify that 'result' holds 30
-	resultVal, exists := machine.Globals()[1] // Assuming result is slot 1 (slot 0 being the function object itself)
+	resultVal, exists := machine.Globals()[3] // Slots 0 and 1 are reserved; Add uses slot 2.
 	if !exists {
 		t.Fatalf("expected variable 'result' in globals")
 	}
 	if resultVal.Num != 30 {
 		t.Errorf("expected result 30, got %f", resultVal.Num)
+	}
+}
+
+func TestCompilerForwardCallAndSystemExit(t *testing.T) {
+	input := `
+	System.SetErrorHandler(Handler)
+	Const Base As Numeric = 0
+	Const Result As Numeric = Main()
+	System.Exit(Result)
+
+	Function Main() As Numeric
+		Return Base
+	End Function
+
+	Function Handler(errMsg As String)
+		Return
+	End Function
+	`
+
+	p := parser.NewParser(parser.NewLexer(input))
+	program := p.ParseProgram()
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+
+	machine := vm.NewVM(comp.Bytecode())
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+	if code, exited := machine.ExitCode(); !exited || code != 0 {
+		t.Fatalf("exit status = (%d, %t), want (0, true)", code, exited)
+	}
+}
+
+func TestCompilerRejectsConstantAssignment(t *testing.T) {
+	input := `
+	Const answer As Numeric = 42
+	answer = 43
+	`
+
+	p := parser.NewParser(parser.NewLexer(input))
+	program := p.ParseProgram()
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	err := comp.Compile(program)
+	if err == nil || err.Error() != "cannot assign to constant: answer" {
+		t.Fatalf("compiler error = %v, want constant-assignment error", err)
 	}
 }
 
@@ -348,7 +403,7 @@ func TestCompilerFibonacciRecursion(t *testing.T) {
 		t.Fatalf("vm execution error: %v", err)
 	}
 
-	resultVal, exists := machine.Globals()[1] // Assuming result slot
+	resultVal, exists := machine.Globals()[3] // Slots 0 and 1 are reserved; Fib uses slot 2.
 	if !exists {
 		t.Fatalf("expected variable 'result' in globals")
 	}
@@ -395,7 +450,7 @@ func TestCompilerMutualRecursion(t *testing.T) {
 		t.Fatalf("vm execution error: %v", err)
 	}
 
-	resultVal, exists := machine.Globals()[2] // Assuming result slot
+	resultVal, exists := machine.Globals()[4] // Slots 0 and 1 are reserved; IsEven and IsOdd use 2 and 3.
 	if !exists {
 		t.Fatalf("expected variable 'result' in globals")
 	}
@@ -437,8 +492,8 @@ func TestCompilerClosures(t *testing.T) {
 	}
 
 	// Verify that 'result' holds 15 in globals
-	// Slot layout: 0: MakeAdder, 1: addFive, 2: result
-	resultVal, exists := machine.Globals()[2]
+	// Slots 0 and 1 are reserved; MakeAdder, addFive, and result use 2, 3, and 4.
+	resultVal, exists := machine.Globals()[4]
 	if !exists {
 		t.Fatalf("expected variable 'result' in globals")
 	}

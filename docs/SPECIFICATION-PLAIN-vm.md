@@ -121,3 +121,5 @@ Upon initialization (`NewVM`), the VM populates reserved global variable slots b
 If an instruction produces a runtime fault (such as division by zero, type mismatch, or out-of-bounds list indexing), the VM checks whether a handler has been registered via `System.SetErrorHandler`.
 - If registered, the VM saves the active frame's `ip`, allocates a new `Frame` for the handler function/closure, passes the error message as a `ValString` argument, and resumes execution inside the handler.
 - When the handler executes `OpReturn`, control resumes cleanly from the saved instruction pointer.
+
+`System.Exit(code)` stops the VM without invoking the runtime error handler. The VM retains the requested code for the command-line runner, which exits with that status.

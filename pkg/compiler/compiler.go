@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"plain/pkg/ast"
 	"plain/pkg/bytecode"
+	"plain/pkg/token"
 	"plain/pkg/value"
 )
 
@@ -44,14 +45,17 @@ func (c *Compiler) Compile(node ast.Node) error {
 	case *ast.AssignmentStatement:
 		switch left := n.Left.(type) {
 		case *ast.Identifier:
-			// 1. Compile RHS expression
-			if err := c.Compile(n.Value); err != nil {
-				return err
-			}
-			// 2. Lookup existing variable slot using Resolve
+			// 1. Resolve the target and reject reassignment to constants.
 			symbol, exists := c.symbolTable.Resolve(left.Value)
 			if !exists {
 				return fmt.Errorf("undefined variable for assignment: %s", left.Value)
+			}
+			if symbol.Immutable {
+				return fmt.Errorf("cannot assign to constant: %s", left.Value)
+			}
+			// 2. Compile RHS expression
+			if err := c.Compile(n.Value); err != nil {
+				return err
 			}
 			// 3. Emit store instruction and slot index based on scope
 			if symbol.Scope == GlobalScope || !c.inFunction {
@@ -508,8 +512,39 @@ func (c *Compiler) Compile(node ast.Node) error {
 			}
 		}
 
-		// 2. Compilation pass: compile all statements normally now that all functions are known
 		for _, s := range n.Statements {
+			varStmt, ok := s.(*ast.VarStatement)
+			if !ok {
+				continue
+			}
+			if _, exists := c.symbolTable.Resolve(varStmt.Name.Value); exists {
+				continue
+			}
+			symbol := Symbol{
+				Name:      varStmt.Name.Value,
+				Scope:     GlobalScope,
+				Index:     c.globalVarCount,
+				Immutable: varStmt.Token.Type == token.CONST,
+			}
+			c.symbolTable.Store[varStmt.Name.Value] = symbol
+			c.globalVarCount++
+		}
+
+		// 2. Compile function declarations first so they are initialized before use.
+		for _, s := range n.Statements {
+			if _, ok := s.(*ast.FunctionStatement); !ok {
+				continue
+			}
+			if err := c.Compile(s); err != nil {
+				return err
+			}
+		}
+
+		// 3. Compile the remaining statements in source order.
+		for _, s := range n.Statements {
+			if _, ok := s.(*ast.FunctionStatement); ok {
+				continue
+			}
 			if err := c.Compile(s); err != nil {
 				return err
 			}
@@ -576,17 +611,23 @@ func (c *Compiler) Compile(node ast.Node) error {
 			symbol, exists := c.symbolTable.Resolve(n.Name.Value)
 			if !exists {
 				symbol = Symbol{
-					Name:  n.Name.Value,
-					Scope: GlobalScope,
-					Index: c.globalVarCount,
+					Name:      n.Name.Value,
+					Scope:     GlobalScope,
+					Index:     c.globalVarCount,
+					Immutable: n.Token.Type == token.CONST,
 				}
 				c.symbolTable.Store[n.Name.Value] = symbol
 				c.globalVarCount++
+			} else if n.Token.Type == token.CONST {
+				symbol.Immutable = true
+				c.symbolTable.Store[n.Name.Value] = symbol
 			}
 			c.chunk.WriteOpcode(bytecode.OpStoreVar)
 			c.chunk.WriteByte(symbol.Index)
 		} else {
 			symbol = c.symbolTable.Define(n.Name.Value, c.localVarCount)
+			symbol.Immutable = n.Token.Type == token.CONST
+			c.symbolTable.Store[n.Name.Value] = symbol
 			c.localVarCount++
 			c.chunk.WriteOpcode(bytecode.OpStoreLocal)
 			c.chunk.WriteByte(symbol.Index)
