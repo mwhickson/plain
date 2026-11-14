@@ -1,3 +1,0 @@
-name = "PLAIN"
-grammar = "plain"
-path_suffixes = ["plain"]

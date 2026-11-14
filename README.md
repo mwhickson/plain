@@ -142,8 +142,9 @@ Build and install a `VSIX` package.
 
 To use the syntax configuration in Zed:
 
-1. Place or link the contents of `support/plain-zed` into your Zed local extensions directory (e.g., `~/.local/share/zed/extensions/installed/plain` or your local extensions development path).
-2. Zed will automatically pick up the grammar configuration (`config.toml`) and TextMate rules.
+Compile the extension bits provided using Rust.
+
+> NOTE: Zed ditched TextMate support in favour of Tree-sitter compiled WASM.
 
 ### Vim / Neovim (`support/plain-vim/`)
 

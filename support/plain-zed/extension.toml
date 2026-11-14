@@ -1,0 +1,6 @@
+id = "plain"
+name = "PLAIN"
+version = "0.1.0"
+schema_version = 1
+authors = ["Matthew Hickson"]
+description = "PLAIN programming language syntax support"
