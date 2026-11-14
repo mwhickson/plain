@@ -26,8 +26,9 @@ func NewVM(chunk *bytecode.Chunk) *VM {
 		frameIndex: 1,
 	}
 
-	// Bind the Console module to global slot 0 (matching the compiler's first pre-registration)
-	vm.globals[0] = modules.GetConsoleModule()
+	// Bind standard modules to global slots
+	vm.globals[0] = modules.GetSystemModule()
+	vm.globals[1] = modules.GetConsoleModule()
 
 	// Setup root frame for main script
 	vm.frames[0] = Frame{
@@ -36,6 +37,69 @@ func NewVM(chunk *bytecode.Chunk) *VM {
 		basePointer: 0,
 	}
 	return vm
+}
+
+// Helper to execute a user-defined function/closure error handler
+func (vm *VM) executeHandlerClosure(closure *value.ClosureObject, arg value.Value) error {
+	if closure.Fn.ParamCount < 1 {
+		return fmt.Errorf("error handler function must accept at least 1 parameter (error message)")
+	}
+
+	// Save current instruction pointer to the active frame before switching
+	vm.frames[vm.frameIndex-1].ip = vm.ip
+
+	// Set up call frame for the error handler
+	basePtr := len(vm.stack)
+	vm.Push(arg) // Push error message argument
+	for i := 1; i < closure.Fn.LocalVarCount; i++ {
+		vm.Push(value.NewNone())
+	}
+
+	newFrame := Frame{
+		closure:     closure,
+		ip:          closure.Fn.InstructionStartIndex,
+		basePointer: basePtr,
+	}
+
+	if vm.frameIndex >= len(vm.frames) {
+		return fmt.Errorf("call stack overflow in error handler")
+	}
+
+	vm.frames[vm.frameIndex] = newFrame
+	vm.frameIndex++
+	vm.ip = closure.Fn.InstructionStartIndex
+
+	// Continue VM execution loop for the handler
+	return vm.Run()
+}
+
+func (vm *VM) handleError(err error) error {
+	if modules.GlobalErrorHandler.Type == value.ValNone || modules.GlobalErrorHandler.Obj == nil {
+		return err // No handler registered, return original error
+	}
+
+	errMsg := value.NewString(err.Error())
+
+	// Handle invoking the error handler based on its underlying value type
+	switch handler := modules.GlobalErrorHandler.Obj.(type) {
+	case value.BuiltinFunction:
+		_, handlerErr := handler([]value.Value{errMsg})
+		if handlerErr != nil {
+			return fmt.Errorf("error in error handler: %v (original error: %v)", handlerErr, err)
+		}
+		return nil // Error successfully handled by native builtin hook
+
+	case *value.FunctionObject:
+		// Convert standard function object to a closure with no free vars and execute it
+		closure := &value.ClosureObject{Fn: handler, Free: nil}
+		return vm.executeHandlerClosure(closure, errMsg)
+
+	case *value.ClosureObject:
+		return vm.executeHandlerClosure(handler, errMsg)
+
+	default:
+		return err
+	}
 }
 
 func (vm *VM) Globals() map[byte]value.Value {
@@ -57,6 +121,14 @@ func (vm *VM) Push(val value.Value) {
 }
 
 func (vm *VM) Run() error {
+	err := vm.runLoop()
+	if err != nil {
+		return vm.handleError(err)
+	}
+	return nil
+}
+
+func (vm *VM) runLoop() error {
 	for vm.ip < len(vm.chunk.Code) {
 		op := bytecode.Opcode(vm.chunk.Code[vm.ip])
 		vm.ip++
