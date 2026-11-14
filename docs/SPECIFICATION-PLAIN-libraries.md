@@ -48,6 +48,12 @@ This proposal outlines the core module layout and candidate function sets for th
 * `Open(path)`
 * `Query(db, sql, params...)`
 
+### Debugging
+
+* **Purpose**: Debugging support.
+* **Functions**:
+* TODO:
+
 ### Decimal *(Candidate / Future)*
 
 * **Purpose**: Fixed-point arithmetic and rounding modes for accurate financial, accounting, and currency calculations without floating-point discrepancies.
@@ -219,6 +225,12 @@ This proposal outlines the core module layout and candidate function sets for th
 * `GetPID()`
 * `Sleep(milliseconds)`
 * `Spawn(command, args...)`
+
+### Testing
+
+* **Purpose**: Software testing support.
+* **Functions**:
+* TODO:
 
 ### Time
 

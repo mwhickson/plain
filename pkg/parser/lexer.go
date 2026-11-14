@@ -24,6 +24,9 @@ func (l *Lexer) NextToken() token.Token {
 	tok.Line = l.line
 
 	switch l.ch {
+	case '\'':
+		l.skipComment()
+		return l.NextToken()
 	case 0:
 		tok.Literal = ""
 		tok.Type = token.EOF
@@ -149,6 +152,12 @@ func (l *Lexer) readString() string {
 		}
 	}
 	return l.input[position:l.position]
+}
+
+func (l *Lexer) skipComment() {
+	for l.ch != '\n' && l.ch != 0 {
+		l.readChar()
+	}
 }
 
 func (l *Lexer) skipWhitespace() {
