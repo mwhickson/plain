@@ -138,6 +138,8 @@ Build and install a `VSIX` package.
 
 > NOTE: Xcopy deployment for VS Code extensions is no longer possible.
 
+![VS Code syntax highlighting screenshot](docs/screenshots/vscode-syntax-highlighting.png)
+
 ### Zed (`support/plain-zed/`)
 
 To use the syntax configuration in Zed:
@@ -153,6 +155,8 @@ To use the native Vim syntax highlighting and filetype detection:
 1. Copy the contents of `support/plain-vim/` into your local Vim runtime path (usually `~/.vim/` on Unix or `$HOME/vimfiles/` on Windows; for Neovim, use `~/.config/nvim/`).
     - `ftdetect/plain.vim` maps `.plain` file extensions to the `plain` filetype.
     - `syntax/plain.vim` defines keywords, types, modules, comments, and highlight groups.
+
+![Vim syntax highlighting screenshot](docs/screenshots/vim-syntax-highlighting.png)
 
 ## Package Structure
 
