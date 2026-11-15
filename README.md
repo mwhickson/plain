@@ -26,6 +26,8 @@ PLAIN, and its associated tooling, is intended to fill software development nich
   - `System`: Built-in system functions (`System.SetErrorHandler`, `System.Exit`).
   - `Console`: Built-in terminal I/O functions (`Console.Print`, `Console.PrintLine`, `Console.Input`, `Console.Cls`).
   - `List`: List utilities (`List.Len`, `List.Contains`, `List.Append`, `List.Reverse`).
+  - `String`, `Struct`, `Math`, `Random`, `File`, `Time`, and `Decimal`: Built-in text, record, numeric, random, file, and time utilities.
+  - See the [standard library reference](docs/SPECIFICATION-PLAIN-libraries.md) for available functions and behavior.
 - **Bytecode Disassembler:** Built-in instruction disassembly for inspecting compiled chunks.
 
 ## Language Examples
@@ -177,8 +179,16 @@ plain/
 │   │   ├── compiler.go      # AST to bytecode compiler and type checker
 │   │   └── symbol.go        # Lexical scoping and symbol resolution
 │   ├── modules/
-│   │   └── console.go       # Built-in Console standard library module
-│   │   └── system.go        # Built-in System standard library module
+│   │   ├── console.go       # Built-in Console standard library module
+│   │   ├── decimal.go       # Built-in Decimal standard library module
+│   │   ├── file.go          # Built-in File standard library module
+│   │   ├── list.go          # Built-in List standard library module
+│   │   ├── math.go          # Built-in Math standard library module
+│   │   ├── random.go        # Built-in Random standard library module
+│   │   ├── string.go        # Built-in String standard library module
+│   │   ├── struct.go        # Built-in Struct standard library module
+│   │   ├── system.go        # Built-in System standard library module
+│   │   └── time.go          # Built-in Time standard library module
 │   ├── parser/
 │   │   ├── lexer.go         # Tokenizer (source text to tokens)
 │   │   └── parser.go        # Pratt parser (tokens to AST)

@@ -51,11 +51,13 @@ func fileAppendText(args []value.Value) (value.Value, error) {
 	if err != nil {
 		return value.NewNone(), err
 	}
-	defer f.Close()
-
 	_, err = f.WriteString(args[1].Str)
+	closeErr := f.Close()
 	if err != nil {
 		return value.NewNone(), err
+	}
+	if closeErr != nil {
+		return value.NewNone(), closeErr
 	}
 	return value.NewNone(), nil
 }
@@ -65,7 +67,13 @@ func fileExists(args []value.Value) (value.Value, error) {
 		return value.NewNone(), fmt.Errorf("File.Exists() requires 1 String path argument")
 	}
 	_, err := os.Stat(args[0].Str)
-	return value.NewBoolean(err == nil), nil
+	if err == nil {
+		return value.NewBoolean(true), nil
+	}
+	if os.IsNotExist(err) {
+		return value.NewBoolean(false), nil
+	}
+	return value.NewNone(), err
 }
 
 func fileReadBytes(args []value.Value) (value.Value, error) {
@@ -92,6 +100,9 @@ func fileWriteBytes(args []value.Value) (value.Value, error) {
 	for i, item := range list {
 		if item.Type != value.ValNumeric {
 			return value.NewNone(), fmt.Errorf("File.WriteBytes() list elements must be Numeric bytes")
+		}
+		if item.Num < 0 || item.Num > 255 || item.Num != float64(byte(item.Num)) {
+			return value.NewNone(), fmt.Errorf("File.WriteBytes() byte values must be whole numbers from 0 to 255")
 		}
 		data[i] = byte(item.Num)
 	}

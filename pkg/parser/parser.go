@@ -70,6 +70,7 @@ func NewParser(l *Lexer) *Parser {
 	p.registerPrefix(token.NONE, p.parseNoneLiteral)
 	p.registerPrefix(token.NUMBER, p.parseIntegerLiteral)
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
+	p.registerPrefix(token.STRUCT, p.parseIdentifier)
 	p.registerPrefix(token.TRUE, p.parseBooleanLiteral)
 
 	// Register infix parse functions
@@ -523,24 +524,30 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.RETURN:
 		return p.parseReturnStatement()
 	case token.STRUCT:
-		return p.parseStructStatement()
+		if p.peekTokenIs(token.IDENT) {
+			return p.parseStructStatement()
+		}
+		return p.parseExpressionOrAssignment()
 	case token.VAR, token.CONST:
 		return p.parseVarStatement()
 	default:
-		// Check if this is an assignment statement (e.g. x = 10 or v.X = 20)
-		exp := p.parseExpression(LOWEST)
-		if p.peekTokenIs(token.ASSIGN) {
-			stmt := &ast.AssignmentStatement{Token: p.curToken, Left: exp}
-			p.nextToken() // move to ASSIGN
-			p.nextToken() // move past ASSIGN to RHS expression
-			stmt.Value = p.parseExpression(LOWEST)
-			if p.peekTokenIs(token.EOF) {
-				p.nextToken()
-			}
-			return stmt
-		}
-		return &ast.ExpressionStatement{Token: p.curToken, Expression: exp}
+		return p.parseExpressionOrAssignment()
 	}
+}
+
+func (p *Parser) parseExpressionOrAssignment() ast.Statement {
+	exp := p.parseExpression(LOWEST)
+	if p.peekTokenIs(token.ASSIGN) {
+		stmt := &ast.AssignmentStatement{Token: p.curToken, Left: exp}
+		p.nextToken()
+		p.nextToken()
+		stmt.Value = p.parseExpression(LOWEST)
+		if p.peekTokenIs(token.EOF) {
+			p.nextToken()
+		}
+		return stmt
+	}
+	return &ast.ExpressionStatement{Token: p.curToken, Expression: exp}
 }
 
 func (p *Parser) parseStringLiteral() ast.Expression {

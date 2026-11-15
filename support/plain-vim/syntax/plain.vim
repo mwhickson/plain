@@ -28,7 +28,7 @@ syntax keyword plainDeclaration Var Const Function Struct As
 syntax keyword plainType Numeric String Boolean List Struct
 
 " Standard Library Modules
-syntax keyword plainModule Console System
+syntax keyword plainModule Console System List String Struct Math Random File Time Decimal
 
 " Link to standard Vim highlight groups
 hi def link plainComment    Comment

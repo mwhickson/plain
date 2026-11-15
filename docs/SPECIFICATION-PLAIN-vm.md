@@ -26,7 +26,15 @@ The PLAIN Virtual Machine is a lightweight, stack-based runtime written in Go. I
 |  |   Global Slots     |                          |
 |  |  0: System         |                          |
 |  |  1: Console        |                          |
-|  |  2..N: User Vars   |                          |
+|  |  2: List           |                          |
+|  |  3: String         |                          |
+|  |  4: Struct         |                          |
+|  |  5: Math           |                          |
+|  |  6: Random         |                          |
+|  |  7: File           |                          |
+|  |  8: Time           |                          |
+|  |  9: Decimal        |                          |
+|  |  10..N: User Vars  |                          |
 |  +--------------------+                          |
 +--------------------------------------------------+
 ```
@@ -118,6 +126,7 @@ Upon initialization (`NewVM`), the VM populates reserved global variable slots b
 - **Slot `0`:** `System` module (`SetErrorHandler`, `Exit`)
 - **Slot `1`:** `Console` module (`Print`, `PrintLine`, `Input`, `Cls`)
 - **Slot `2`:** `List` module (`Len`, `Contains`, `Append`, `Reverse`)
+- **Slots `3..9`:** `String`, `Struct`, `Math`, `Random`, `File`, `Time`, and `Decimal`, respectively.
 
 ### 5.2 Runtime Error Interception (`handleError`)
 If an instruction produces a runtime fault (such as division by zero, type mismatch, or out-of-bounds list indexing), the VM checks whether a handler has been registered via `System.SetErrorHandler`.

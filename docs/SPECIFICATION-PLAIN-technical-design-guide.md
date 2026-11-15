@@ -9,7 +9,7 @@
 
 PLAIN (Programming Language Allowing Implementation Neatly) is a statically-typed, BASIC-inspired programming language engineered around a clean, single-pass Abstract Syntax Tree (AST) compiler targeting a custom stack-based Virtual Machine in Go.
 
-The architecture prioritizes **transparency, low implementation overhead, and modular extensibility**. Rather than relying on complex foreign function interfaces (FFIs) or heavy runtime bytecode verifiers, PLAIN exposes native capabilities through pre-seeded `Struct` namespaces (`System`, `Console`) backed by Go callback functions (`ValBuiltin`).
+The architecture prioritizes **transparency, low implementation overhead, and modular extensibility**. Rather than relying on complex foreign function interfaces (FFIs) or heavy runtime bytecode verifiers, PLAIN exposes native capabilities through pre-seeded standard-library `Struct` namespaces backed by Go callback functions (`ValBuiltin`).
 
 ```text
 [ Source Code (.plain) ]
@@ -43,7 +43,7 @@ The architecture prioritizes **transparency, low implementation overhead, and mo
 The lexer performs single-pass UTF-8 scanning to produce tokens with line/column metadata:
 - **Case-Insensitive Keywords:** Keywords (`Var`, `As`, `Function`, `If`, `Then`, `Else`, `End`, `For`, `To`, `Step`, `Return`, `Struct`, `True`, `False`, `None`) are matched case-insensitively during lookup, while PascalCase is preserved as the canonical style.
 - **Line Comments:** Single-quote (`'`) characters initiate line comments; the lexer consumes all characters until the next newline (`\n`) or `EOF`.
-- **Identifier Flexibility:** Standard library module names (`System`, `Console`) and method names (`Print`, `Input`) are lexed as standard `IDENT` tokens rather than reserved keywords, allowing clean dot-notation property resolution without grammar pollution.
+- **Identifier Flexibility:** Standard library module names and method names are lexed as standard `IDENT` tokens rather than reserved keywords, allowing clean dot-notation property resolution without grammar pollution.
 
 ### 2.2 Pratt Parser (`pkg/parser/parser.go`)
 PLAIN uses a Top-Down Operator Precedence (Pratt) parser to resolve expressions cleanly without left-recursion:
@@ -78,10 +78,8 @@ Variable declarations (`Var x As Type = expr`) enforce explicit type annotations
 
 To avoid complex FFI bindings or dynamic linker overhead, PLAIN implements standard library modules as native `ValStruct` maps populated with `ValBuiltin` functions:
 
-1. **Compiler Pre-Registration:** During `compiler.New()`, core module names are registered into the global symbol table before user code is compiled:
-   - Slot `0`: `System`
-   - Slot `1`: `Console`
-2. **VM Slot Seeding:** During `vm.NewVM()`, the VM instantiates the module structs (`modules.GetSystemModule()`, `modules.GetConsoleModule()`) and binds them to the matching indices in `vm.globals`.
+1. **Compiler Pre-Registration:** During `compiler.New()`, module names are registered into the global symbol table before user code is compiled. Slots `0..9`, in order, are `System`, `Console`, `List`, `String`, `Struct`, `Math`, `Random`, `File`, `Time`, and `Decimal`.
+2. **VM Slot Seeding:** During `vm.NewVM()`, the VM instantiates the corresponding module structs and binds them to the same indices in `vm.globals`.
 3. **Uniform Invocation:** Because modules are standard `ValStruct` values holding `ValBuiltin` entries, calling `Console.Print("Hi")` compiles to standard `OpLoadVar 1` $\rightarrow$ `OpGetProperty "Print"` $\rightarrow$ `OpPushConst "Hi"` $\rightarrow$ `OpCall 1`. No special bytecode instructions are needed for standard library calls.
 
 ---
@@ -121,5 +119,5 @@ When building **TextMate** grammars or **Tree-sitter** parsers for PLAIN, note t
 - **Comments:** `'` starts a line comment (`comment.line.single-quote.plain`).
 - **Block Delimiters:** All compound structures open with a keyword and close with a two-word `End <Keyword>` pair (`If`/`End If`, `For`/`End For`, `Select`/`End Select`, `Function`/`End Function`, `Struct`/`End Struct`).
 - **Type Annotations:** Always preceded by the `As` keyword (`Identifier As TypeName`).
-- **Built-in Namespaces:** `System` and `Console` act as standard library root identifiers (`support.class.builtin.plain`).
+- **Built-in Namespaces:** Standard library module names act as root identifiers (`support.class.builtin.plain`).
 - **String Literals:** Double-quoted (`"..."`) strings; `+` is overloaded for concatenation.

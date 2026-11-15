@@ -41,6 +41,26 @@ func TestLexerBasic(t *testing.T) {
 	}
 }
 
+func TestLexerDecimalAndPropertyAccessNumbers(t *testing.T) {
+	l := parser.NewLexer("12.5 12.field")
+	tests := []struct {
+		expectedType    token.TokenType
+		expectedLiteral string
+	}{
+		{token.NUMBER, "12.5"},
+		{token.NUMBER, "12"},
+		{token.PERIOD, "."},
+		{token.IDENT, "field"},
+		{token.EOF, ""},
+	}
+	for i, expected := range tests {
+		got := l.NextToken()
+		if got.Type != expected.expectedType || got.Literal != expected.expectedLiteral {
+			t.Fatalf("token %d = (%q, %q), want (%q, %q)", i, got.Type, got.Literal, expected.expectedType, expected.expectedLiteral)
+		}
+	}
+}
+
 func TestLexerLineContinuation(t *testing.T) {
 	tests := []struct {
 		name  string

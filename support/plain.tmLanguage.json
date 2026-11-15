@@ -99,7 +99,7 @@
       "patterns": [
         {
           "name": "support.class.module.plain",
-          "match": "\\b(Console|System)\\b"
+          "match": "\\b(Console|System|List|String|Struct|Math|Random|File|Time|Decimal)\\b"
         }
       ]
     },

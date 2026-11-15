@@ -44,6 +44,14 @@
 [
   "Console"
   "System"
+  "List"
+  "String"
+  "Struct"
+  "Math"
+  "Random"
+  "File"
+  "Time"
+  "Decimal"
 ] @support.class
 
 ; --- Identifiers & Functions ---

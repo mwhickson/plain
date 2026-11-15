@@ -2,8 +2,9 @@ package modules
 
 import (
 	"fmt"
-	"strings"
+	"math"
 	"plain/pkg/value"
+	"strings"
 )
 
 func GetStringModule() value.Value {
@@ -51,13 +52,17 @@ func stringLeft(args []value.Value) (value.Value, error) {
 		return value.NewNone(), fmt.Errorf("String.Left() requires (String, Numeric count)")
 	}
 	runes := []rune(args[0].Str)
-	count := int(args[1].Num)
-	if count < 0 {
-		count = 0
+	countValue := args[1].Num
+	if math.IsNaN(countValue) || math.IsInf(countValue, 0) {
+		return value.NewNone(), fmt.Errorf("String.Left() count must be finite")
 	}
-	if count > len(runes) {
-		count = len(runes)
+	if countValue <= 0 {
+		return value.NewString(""), nil
 	}
+	if countValue >= float64(len(runes)) {
+		return value.NewString(string(runes)), nil
+	}
+	count := int(countValue)
 	return value.NewString(string(runes[:count])), nil
 }
 
@@ -66,13 +71,17 @@ func stringRight(args []value.Value) (value.Value, error) {
 		return value.NewNone(), fmt.Errorf("String.Right() requires (String, Numeric count)")
 	}
 	runes := []rune(args[0].Str)
-	count := int(args[1].Num)
-	if count < 0 {
-		count = 0
+	countValue := args[1].Num
+	if math.IsNaN(countValue) || math.IsInf(countValue, 0) {
+		return value.NewNone(), fmt.Errorf("String.Right() count must be finite")
 	}
-	if count > len(runes) {
-		count = len(runes)
+	if countValue <= 0 {
+		return value.NewString(""), nil
 	}
+	if countValue >= float64(len(runes)) {
+		return value.NewString(string(runes)), nil
+	}
+	count := int(countValue)
 	start := len(runes) - count
 	return value.NewString(string(runes[start:])), nil
 }
@@ -82,10 +91,17 @@ func stringMid(args []value.Value) (value.Value, error) {
 		return value.NewNone(), fmt.Errorf("String.Mid() requires (String, 1-based start [, length])")
 	}
 	runes := []rune(args[0].Str)
+	startValue := args[1].Num
+	if math.IsNaN(startValue) || math.IsInf(startValue, 0) {
+		return value.NewNone(), fmt.Errorf("String.Mid() start must be finite")
+	}
+	if startValue >= float64(len(runes)+1) {
+		return value.NewString(""), nil
+	}
 	// 1-based start adjustment
-	start := int(args[1].Num) - 1
-	if start < 0 {
-		start = 0
+	start := 0
+	if startValue > 1 {
+		start = int(startValue) - 1
 	}
 	if start >= len(runes) {
 		return value.NewString(""), nil
@@ -95,11 +111,18 @@ func stringMid(args []value.Value) (value.Value, error) {
 		if args[2].Type != value.ValNumeric {
 			return value.NewNone(), fmt.Errorf("String.Mid() length must be Numeric")
 		}
-		length := int(args[2].Num)
-		end := start + length
-		if end > len(runes) {
-			end = len(runes)
+		lengthValue := args[2].Num
+		if math.IsNaN(lengthValue) || math.IsInf(lengthValue, 0) {
+			return value.NewNone(), fmt.Errorf("String.Mid() length must be finite")
 		}
+		if lengthValue <= 0 {
+			return value.NewString(""), nil
+		}
+		remaining := len(runes) - start
+		if lengthValue >= float64(remaining) {
+			return value.NewString(string(runes[start:])), nil
+		}
+		end := start + int(lengthValue)
 		return value.NewString(string(runes[start:end])), nil
 	}
 

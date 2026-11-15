@@ -3,6 +3,7 @@ package modules
 import (
 	"fmt"
 	"plain/pkg/value"
+	"sort"
 )
 
 func GetStructModule() value.Value {
@@ -22,7 +23,12 @@ func structKeys(args []value.Value) (value.Value, error) {
 	}
 	m := args[0].Obj.(map[string]value.Value)
 	keys := make([]value.Value, 0, len(m))
+	names := make([]string, 0, len(m))
 	for k := range m {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+	for _, k := range names {
 		keys = append(keys, value.NewString(k))
 	}
 	return value.Value{Type: value.ValList, Obj: keys}, nil

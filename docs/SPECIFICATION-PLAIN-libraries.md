@@ -62,14 +62,12 @@ Standard library modules are exposed as global `Struct` namespaces pre-registere
 * **Functions**:
   * *TBD*
 
-### Decimal *(Candidate / Future)*
+### Decimal *(Implemented — Global Slot 9)*
 
-* **Purpose**: Fixed-point arithmetic and rounding modes for accurate financial, accounting, and currency calculations without floating-point discrepancies.
-* **Functions**:
-  * `Add(a, b)`, `Sub(a, b)`, `Mul(a, b)`, `Div(a, b)`
-  * `FormatCurrency(amount, pictureClause)`
-  * `FromString(numericString)`
-  * `RoundBankers(amount, decimals)`
+* **Purpose**: Rounding and fixed-place formatting helpers for PLAIN `Numeric` values. Values remain IEEE 754 `float64`; this module does not provide fixed-point or arbitrary-precision arithmetic.
+* **Implemented Functions**:
+  * `Format(value, places)` — Return a string with exactly `places` digits after the decimal point (`0` through `1000`).
+  * `Round(value, places)` — Round a numeric value to the requested decimal place; negative places round to tens, hundreds, and so on (`-308` through `308`).
 
 ### Email *(Candidate / Future)*
 
@@ -90,17 +88,16 @@ Standard library modules are exposed as global `Struct` namespaces pre-registere
   * `GetTempDir()` / `GetHomeDir()`
   * `IsBigEndian()`
 
-### File *(Planned)*
+### File *(Implemented — Global Slot 7)*
 
-* **Purpose**: Synchronous and stream-based file system input/output.
-* **Functions**:
-  * `Append(path, data)`
-  * `Copy(src, dest)`
-  * `Delete(path)`
-  * `Exists(path)`
-  * `Open(path, mode)`
-  * `Read(file)` / `ReadAll(path)`
-  * `Write(file, data)` / `WriteAll(path, data)`
+* **Purpose**: Synchronous whole-file text and byte input/output.
+* **Implemented Functions**:
+  * `AppendText(path, content)` — Append text to a file, creating it if needed.
+  * `Exists(path)` — Return whether the path exists; filesystem errors other than “not found” are reported.
+  * `ReadBytes(path)` — Return file bytes as a list of numeric values from `0` to `255`.
+  * `ReadText(path)` — Read a file as a string.
+  * `WriteBytes(path, byteValues)` — Write a list of whole-number byte values from `0` to `255`.
+  * `WriteText(path, content)` — Create or replace a file with text.
 
 ### Forms *(Reserved / Future)*
 
@@ -169,14 +166,12 @@ Standard library modules are exposed as global `Struct` namespaces pre-registere
   * `SetOutputFile(path)`
   * `Warn(message)`
 
-### Math *(Planned)*
+### Math *(Implemented — Global Slot 5)*
 
-* **Purpose**: Business, programmer, and scientific mathematical operations.
-* **Functions**:
-  * `Abs(n)`, `Floor(n)`, `Ceil(n)`, `Round(n, decimals)`
-  * `Log(n)`, `Exp(n)`, `Pow(base, exp)`, `Sqrt(n)`
-  * `Min(a, b)`, `Max(a, b)`
-  * `Sin(n)`, `Cos(n)`, `Tan(n)`, `Asin(n)`, `Acos(n)`, `Atan(n)`
+* **Purpose**: Common numeric operations.
+* **Implemented Functions**:
+  * `Abs(n)`, `Ceil(n)`, `Floor(n)`, `Round(n [, decimals])`
+  * `Max(a, b)`, `Min(a, b)`, `Pow(base, exp)`, `Sqrt(n)`
 
 ### Network *(Planned)*
 
@@ -188,11 +183,16 @@ Standard library modules are exposed as global `Struct` namespaces pre-registere
   * `Put(url, body)`
   * `SetHeader(key, value)`
 
-### Random
+### Random *(Implemented — Global Slot 6)*
 
-* **Purpose**: General randomization support.
-* **Functions**:
-  * TBD
+* **Purpose**: Pseudo-random number generation and list selection.
+* **Implemented Functions**:
+  * `Chance(percentage)` — Return a Boolean with the supplied probability from `0` to `100`.
+  * `Choice(list)` — Return one list element, or `None` for an empty list.
+  * `Float()` — Return a number in `[0, 1)`.
+  * `Int(min, max)` — Return an integer in the inclusive range; reversed bounds are accepted.
+  * `Seed(number)` — Reset the shared generator using a finite signed 64-bit integer seed.
+  * `Shuffle(list)` — Return a shuffled copy of the list.
 
 ### Sound *(Planned)*
 
@@ -203,31 +203,24 @@ Standard library modules are exposed as global `Struct` namespaces pre-registere
   * `SetVolume(sound, level)`
   * `StopSound(sound)`
 
-### String *(Planned)*
+### String *(Implemented — Global Slot 3)*
 
-* **Purpose**: Advanced text manipulation, substring extraction, pattern matching, and encoding utilities.
-* **Functions**:
-  * `Base64Encode(str)` / `Base64Decode(str)`
-  * `ExtractRegex(str, pattern)`
-  * `Join(list, delimiter)`
-  * `Left(str, count)`
-  * `Len(str)`
-  * `Lower(str)` / `Upper(str)`
-  * `MatchRegex(str, pattern)`
-  * `Mid(str, start, length)`
-  * `Replace(str, target, replacement)`
-  * `ReplaceRegex(str, pattern, replacement)`
-  * `Right(str, count)`
-  * `Split(str, delimiter)`
+* **Purpose**: Basic Unicode-aware text manipulation.
+* **Implemented Functions**:
+  * `Join(list, delimiter)` — Join string representations of list elements.
+  * `Left(str, count)`, `Right(str, count)` — Return up to `count` Unicode code points from either end.
+  * `Len(str)` — Count Unicode code points.
+  * `Lower(str)`, `Upper(str)`
+  * `Mid(str, start [, length])` — Extract from a 1-based start position.
+  * `Replace(str, target, replacement)` — Replace all occurrences.
+  * `Split(str, delimiter)` — Split into a list of strings.
 
-### Struct *(Planned)*
+### Struct *(Implemented — Global Slot 4)*
 
-* **Purpose**: Structural reflection, key enumeration, and layout serialization.
-* **Functions**:
-  * `FromJson(jsonString, structTypeName)`
-  * `HasKey(structInstance, keyName)`
-  * `Keys(structInstance)`
-  * `ToJson(structInstance)`
+* **Purpose**: Basic reflection over struct values.
+* **Implemented Functions**:
+  * `HasKey(structInstance, keyName)` — Return whether the string key exists.
+  * `Keys(structInstance)` — Return the field names in lexicographic order.
 
 ### System *(Implemented — Global Slot 0)*
 
@@ -247,16 +240,13 @@ Standard library modules are exposed as global `Struct` namespaces pre-registere
 * **Functions**:
   * *TBD*
 
-### Time *(Planned)*
+### Time *(Implemented — Global Slot 8)*
 
-* **Purpose**: Temporal calculations, formatting, and date-time manipulation.
-* **Functions**:
-  * `AddDays(timestamp, days)`
-  * `Diff(timestampA, timestampB)`
-  * `Format(timestamp, layout)`
-  * `Now()`
-  * `Parse(dateString, layout)`
-  * `Year(t)`, `Month(t)`, `Day(t)`, `Hour(t)`, `Minute(t)`, `Second(t)`
+* **Purpose**: Millisecond timestamps and basic delays/formatting.
+* **Implemented Functions**:
+  * `Format(timestamp)` — Format a Unix-millisecond timestamp as `YYYY-MM-DD HH:MM:SS`.
+  * `Now()` — Return the current Unix timestamp in milliseconds.
+  * `Sleep(milliseconds)` — Suspend execution for the requested non-negative duration.
 
 ### XML *(Planned)*
 
