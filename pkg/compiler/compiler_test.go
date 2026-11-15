@@ -5,12 +5,18 @@ import (
 	"os"
 	"path/filepath"
 	"plain/pkg/compiler"
+	"plain/pkg/modules"
 	"plain/pkg/parser"
 	"plain/pkg/value"
 	"plain/pkg/vm"
 	"strconv"
 	"testing"
 )
+
+func userGlobal(machine *vm.VM, offset byte) (value.Value, bool) {
+	result, ok := machine.Globals()[modules.UserGlobalStart+offset]
+	return result, ok
+}
 
 func TestCompilerExpressionCompilation(t *testing.T) {
 	input := `10 + 20`
@@ -72,9 +78,7 @@ func TestCompilerVariableAssignment(t *testing.T) {
 		t.Fatalf("vm execution error: %v", err)
 	}
 
-	// For a variable declaration statement, the value remains stored in globals[0].
-	// Let's test compiling a second statement that loads it: "total"
-	// Or we can verify the VM globals directly if exposed, or append a load test.
+	// The declared variable remains stored in the VM globals.
 }
 
 func TestCompilerComplexExpressions(t *testing.T) {
@@ -139,8 +143,7 @@ func TestCompilerIfElseStatement(t *testing.T) {
 		t.Fatalf("vm execution error: %v", err)
 	}
 
-	// Verify that globals[0] (or whichever slot 'result' took) got assigned 42!
-	// Let's check how your symbol table assigns slots.
+	// Verify that the result was assigned to a VM global.
 }
 
 func TestCompilerRangeLoop(t *testing.T) {
@@ -172,7 +175,7 @@ func TestCompilerRangeLoop(t *testing.T) {
 	}
 
 	// sum should hold 15 (1 + 2 + 3 + 4 + 5)
-	sumVal, exists := machine.Globals()[10] // Slots 0 through 9 are reserved for standard library modules.
+	sumVal, exists := userGlobal(machine, 0)
 	if !exists {
 		t.Fatalf("expected variable 'sum' in globals")
 	}
@@ -211,7 +214,7 @@ func TestCompilerFunctionCall(t *testing.T) {
 	}
 
 	// Verify that 'result' holds 30
-	resultVal, exists := machine.Globals()[11] // Add uses slot 10.
+	resultVal, exists := userGlobal(machine, 1)
 	if !exists {
 		t.Fatalf("expected variable 'result' in globals")
 	}
@@ -408,7 +411,7 @@ func TestCompilerFibonacciRecursion(t *testing.T) {
 		t.Fatalf("vm execution error: %v", err)
 	}
 
-	resultVal, exists := machine.Globals()[11] // Fib uses slot 10.
+	resultVal, exists := userGlobal(machine, 1)
 	if !exists {
 		t.Fatalf("expected variable 'result' in globals")
 	}
@@ -455,7 +458,7 @@ func TestCompilerMutualRecursion(t *testing.T) {
 		t.Fatalf("vm execution error: %v", err)
 	}
 
-	resultVal, exists := machine.Globals()[12] // IsEven and IsOdd use slots 10 and 11.
+	resultVal, exists := userGlobal(machine, 2)
 	if !exists {
 		t.Fatalf("expected variable 'result' in globals")
 	}
@@ -497,8 +500,7 @@ func TestCompilerClosures(t *testing.T) {
 	}
 
 	// Verify that 'result' holds 15 in globals
-	// Slots 0 through 9 are reserved; MakeAdder, addFive, and result use 10, 11, and 12.
-	resultVal, exists := machine.Globals()[12]
+	resultVal, exists := userGlobal(machine, 2)
 	if !exists {
 		t.Fatalf("expected variable 'result' in globals")
 	}
@@ -531,7 +533,7 @@ func TestCompilerLists(t *testing.T) {
 		t.Fatalf("vm execution error: %v", err)
 	}
 
-	first, exists := machine.Globals()[11]
+	first, exists := userGlobal(machine, 1)
 	if !exists || first.Type != value.ValString || first.Str != "Apple" {
 		t.Fatalf("first item = %v, want Apple", first)
 	}
@@ -584,7 +586,7 @@ func TestCompilerFunctionLocalsInsideRangeLoop(t *testing.T) {
 	if err := machine.Run(); err != nil {
 		t.Fatalf("vm execution error: %v", err)
 	}
-	result, exists := machine.Globals()[11]
+	result, exists := userGlobal(machine, 1)
 	if !exists || result.Type != value.ValNumeric || result.Num != 30 {
 		t.Fatalf("sum result = %v, want 30", result)
 	}
@@ -649,7 +651,7 @@ func TestCompilerDefaultStructValues(t *testing.T) {
 		t.Fatalf("vm execution error: %v", err)
 	}
 
-	roomsValue, exists := machine.Globals()[11]
+	roomsValue, exists := userGlobal(machine, 1)
 	if !exists || roomsValue.Type != value.ValList {
 		t.Fatalf("Rooms global = %v, want list", roomsValue)
 	}
@@ -754,6 +756,7 @@ func TestCompilerStandardLibraryModules(t *testing.T) {
 	Var fileText As String = File.ReadText(%s)
 	Var fileExists As Boolean = File.Exists(%s)
 	Var timeText As String = Time.Format(Time.Now())
+	Var platform As String = Environment.GetPlatform()
 	`, strconv.Quote(path), strconv.Quote(path))
 
 	p := parser.NewParser(parser.NewLexer(input))
@@ -775,27 +778,33 @@ func TestCompilerStandardLibraryModules(t *testing.T) {
 		slot byte
 		want value.Value
 	}{
-		{10, value.NewString("PLAIN")},
-		{11, value.NewNumeric(5)},
-		{12, value.NewNumeric(9)},
-		{13, value.NewNumeric(7)},
-		{14, value.NewString("12.50")},
-		{17, value.NewBoolean(true)},
-		{18, value.NewString("module data")},
-		{19, value.NewBoolean(true)},
+		{0, value.NewString("PLAIN")},
+		{1, value.NewNumeric(5)},
+		{2, value.NewNumeric(9)},
+		{3, value.NewNumeric(7)},
+		{4, value.NewString("12.50")},
+		{7, value.NewBoolean(true)},
+		{8, value.NewString("module data")},
+		{9, value.NewBoolean(true)},
 	}
 	for _, check := range checks {
-		got, exists := globals[check.slot]
+		got, exists := userGlobal(machine, check.slot)
 		if !exists || got.Type != check.want.Type || got.Num != check.want.Num || got.Str != check.want.Str || got.Bool != check.want.Bool {
-			t.Errorf("global slot %d = %v, want %v", check.slot, got, check.want)
+			t.Errorf("user global %d = %v, want %v", check.slot, got, check.want)
 		}
 	}
 
-	keys, exists := globals[16]
+	keys, exists := userGlobal(machine, 6)
 	if !exists || keys.Type != value.ValList || len(keys.Obj.([]value.Value)) != 1 || keys.Obj.([]value.Value)[0].Str != "Name" {
 		t.Fatalf("Struct.Keys() result = %v, want [Name]", keys)
 	}
-	if timeText, exists := globals[20]; !exists || timeText.Type != value.ValString || timeText.Str == "" {
+	if timeText, exists := userGlobal(machine, 10); !exists || timeText.Type != value.ValString || timeText.Str == "" {
 		t.Fatalf("Time.Format() result = %v, want non-empty String", timeText)
+	}
+	if platform, exists := userGlobal(machine, 11); !exists || platform.Type != value.ValString || platform.Str == "" {
+		t.Fatalf("Environment.GetPlatform() result = %v, want non-empty String", platform)
+	}
+	if _, exists := globals[modules.UserGlobalStart-1]; exists {
+		t.Fatal("standard library reserved an unexpected final slot")
 	}
 }

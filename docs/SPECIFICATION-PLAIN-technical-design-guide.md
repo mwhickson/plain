@@ -78,8 +78,8 @@ Variable declarations (`Var x As Type = expr`) enforce explicit type annotations
 
 To avoid complex FFI bindings or dynamic linker overhead, PLAIN implements standard library modules as native `ValStruct` maps populated with `ValBuiltin` functions:
 
-1. **Compiler Pre-Registration:** During `compiler.New()`, module names are registered into the global symbol table before user code is compiled. Slots `0..9`, in order, are `System`, `Console`, `List`, `String`, `Struct`, `Math`, `Random`, `File`, `Time`, and `Decimal`.
-2. **VM Slot Seeding:** During `vm.NewVM()`, the VM instantiates the corresponding module structs and binds them to the same indices in `vm.globals`.
+1. **Compiler Pre-Registration:** During `compiler.New()`, module names are registered into the global symbol table before user code is compiled, using the ordered `modules.StandardModules()` registry. The current modules occupy slots `0..10`; slots below `30` remain reserved for future standard-library modules.
+2. **VM Slot Seeding:** During `vm.NewVM()`, the VM instantiates the same registry and binds each module to its corresponding index in `vm.globals`. User globals start at slot `30`.
 3. **Uniform Invocation:** Because modules are standard `ValStruct` values holding `ValBuiltin` entries, calling `Console.Print("Hi")` compiles to standard `OpLoadVar 1` $\rightarrow$ `OpGetProperty "Print"` $\rightarrow$ `OpPushConst "Hi"` $\rightarrow$ `OpCall 1`. No special bytecode instructions are needed for standard library calls.
 
 ---

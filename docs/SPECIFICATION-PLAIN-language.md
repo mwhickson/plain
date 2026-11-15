@@ -216,7 +216,7 @@ Identifier       = letter { letter | digit | "_" } ;
 ## 5. Execution Model & Interactive Tooling
 
 1. **Compilation Strategy:** Source code is parsed into an Abstract Syntax Tree (AST) and compiled into compact PLAIN Bytecode (`.pbc`). Top-level functions are initialized before executable top-level statements, so functions can be called before their declarations.
-2. **Virtual Machine (VM):** The bytecode is executed by a lightweight stack-based VM written in Go. Standard library modules are pre-seeded into global slots as native struct namespaces, in this order: `System`, `Console`, `List`, `String`, `Struct`, `Math`, `Random`, `File`, `Time`, and `Decimal` (slots `0` through `9`).
+2. **Virtual Machine (VM):** The bytecode is executed by a lightweight stack-based VM written in Go. Standard library modules are pre-seeded into global slots as native struct namespaces. Slots `0` through `10` hold the registered modules; slots `11` through `29` are reserved, and user globals begin at slot `30`.
 3. **Runtime Error Interception:** Scripts may register a callback via `System.SetErrorHandler(fn)` to intercept and recover from VM runtime errors. `System.Exit(code)` stops execution and makes the command-line runner exit with that status; exit requests are not runtime errors and are not passed to the handler.
 4. **Interactive REPL:** Supports dual execution modes:
    - **Program Mode (Default):** Silently syntax-checks entered statements and buffers them into an in-memory program listing (`list`, `edit`, `save`, `load`, `run`).

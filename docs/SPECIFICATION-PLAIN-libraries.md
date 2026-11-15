@@ -8,7 +8,7 @@ This document outlines the core module layout, implemented runtime namespaces, a
 
 ## Module Architecture
 
-Standard library modules are exposed as global `Struct` namespaces pre-registered at compile time and bound to low-index global slots in the VM (`System` at slot `0`, `Console` at slot `1`, etc.). Module functions are implemented as native Go `ValBuiltin` callbacks invoked via standard dot-notation property access.
+Standard library modules are exposed as global `Struct` namespaces pre-registered at compile time and bound to low-index global slots in the VM. They share the ordered registry; slots `0..29` are reserved for standard-library modules and user globals start at slot `30`. Module functions are implemented as native Go `ValBuiltin` callbacks invoked via standard dot-notation property access.
 
 ---
 
@@ -78,15 +78,16 @@ Standard library modules are exposed as global `Struct` namespaces pre-registere
   * `CreateMessage(to, subject, body)`
   * `Send(message)`
 
-### Environment *(Planned)*
+### Environment *(Implemented — Global Slot 10)*
 
-* **Purpose**: Platform-specific system inspection, path resolution, and variable access.
-* **Functions**:
-  * `GetArchitecture()`
-  * `GetEnv(name)` / `SetEnv(name, value)`
-  * `GetPlatform()`
-  * `GetTempDir()` / `GetHomeDir()`
-  * `IsBigEndian()`
+* **Purpose**: Platform information, environment variables, and common directory paths.
+* **Implemented Functions**:
+  * `GetArch()` — Return the process architecture.
+  * `GetEnv(name)` / `SetEnv(name, value)` — Read or set an environment variable.
+  * `GetHomeDir()` / `GetTempDir()` — Return the user home or system temporary directory.
+  * `GetPlatform()` — Return the operating system name.
+  * `GetScriptDir()` — Return the active script's directory, or the working directory if no script path is set.
+  * `NewLine()` — Return the platform newline sequence.
 
 ### File *(Implemented — Global Slot 7)*
 

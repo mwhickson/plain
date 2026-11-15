@@ -30,6 +30,23 @@ func callModule(t *testing.T, module value.Value, name string, args ...value.Val
 	return result
 }
 
+func TestStandardModulesFitReservedGlobalRange(t *testing.T) {
+	modules := StandardModules()
+	if len(modules) > int(UserGlobalStart) {
+		t.Fatalf("%d standard modules exceed reserved global range ending at %d", len(modules), UserGlobalStart-1)
+	}
+	seen := make(map[string]bool, len(modules))
+	for i, module := range modules {
+		if module.Name == "" || seen[module.Name] {
+			t.Fatalf("standard module %d has an empty or duplicate name %q", i, module.Name)
+		}
+		seen[module.Name] = true
+		if module.Value.Type != value.ValStruct {
+			t.Errorf("standard module %q has type %s, want Struct", module.Name, module.Value.Type)
+		}
+	}
+}
+
 func TestStringModuleUnicodeAndMidBounds(t *testing.T) {
 	module := GetStringModule()
 	input := value.NewString("héllo")

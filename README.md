@@ -26,7 +26,7 @@ PLAIN, and its associated tooling, is intended to fill software development nich
   - `System`: Built-in system functions (`System.SetErrorHandler`, `System.Exit`).
   - `Console`: Built-in terminal I/O functions (`Console.Print`, `Console.PrintLine`, `Console.Input`, `Console.Cls`).
   - `List`: List utilities (`List.Len`, `List.Contains`, `List.Append`, `List.Reverse`).
-  - `String`, `Struct`, `Math`, `Random`, `File`, `Time`, and `Decimal`: Built-in text, record, numeric, random, file, and time utilities.
+  - `String`, `Struct`, `Math`, `Random`, `File`, `Time`, `Decimal`, and `Environment`: Built-in text, record, numeric, random, file, time, and environment utilities.
   - See the [standard library reference](docs/SPECIFICATION-PLAIN-libraries.md) for available functions and behavior.
 - **Bytecode Disassembler:** Built-in instruction disassembly for inspecting compiled chunks.
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"plain/pkg/ast"
 	"plain/pkg/bytecode"
+	"plain/pkg/modules"
 	"plain/pkg/token"
 	"plain/pkg/value"
 )
@@ -24,23 +25,14 @@ func New() *Compiler {
 		symbolTable:    NewSymbolTable(),
 		variableTypes:  make(map[string]string),
 		structTypes:    make(map[string][]*ast.StructMember),
-		globalVarCount: 0,
+		globalVarCount: modules.UserGlobalStart,
 		localVarCount:  0,
 		inFunction:     false,
 	}
 
-	// Pre-register standard modules in the global symbol table
-	c.registerGlobalModule("System")      // Slot 0
-	c.registerGlobalModule("Console")     // Slot 1
-	c.registerGlobalModule("List")        // Slot 2
-	c.registerGlobalModule("String")      // Slot 3
-	c.registerGlobalModule("Struct")      // Slot 4
-	c.registerGlobalModule("Math")        // Slot 5
-	c.registerGlobalModule("Random")      // Slot 6
-	c.registerGlobalModule("File")        // Slot 7
-	c.registerGlobalModule("Time")        // Slot 8
-	c.registerGlobalModule("Decimal")     // Slot 9
-	c.registerGlobalModule("Environment") // Slot 10
+	for slot, module := range modules.StandardModules() {
+		c.registerGlobalModule(module.Name, byte(slot))
+	}
 
 	return c
 }
@@ -742,13 +734,12 @@ func (c *Compiler) defaultValue(typeName string, constructing map[string]bool) (
 	return value.Value{Type: value.ValStruct, Obj: fields}, nil
 }
 
-func (c *Compiler) registerGlobalModule(name string) {
+func (c *Compiler) registerGlobalModule(name string, slot byte) {
 	symbol := Symbol{
 		Name:  name,
 		Scope: GlobalScope,
-		Index: c.globalVarCount,
+		Index: slot,
 	}
 	c.symbolTable.Store[name] = symbol
 	c.variableTypes[name] = "Struct" // Modules are struct namespaces
-	c.globalVarCount++
 }
