@@ -1,0 +1,1 @@
+100|A Quest|100|10|100,200,300|Congratulations! You have completed this quest!

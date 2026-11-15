@@ -11,6 +11,7 @@ Const DEFAULT_HEALTH As Numeric = 100
 
 Const ScriptDir As String = Environment.GetScriptDir()
 Const Items As List = LoadItems(ScriptDir + "/data/adventure/items.txt")
+Const Quests As List = LoadQuests(ScriptDir + "/data/adventure/quests.txt")
 Const Rooms As List = LoadRooms(ScriptDir + "/data/adventure/rooms.txt")
 
 System.SetErrorHandler(MyErrorHandler)
@@ -56,6 +57,15 @@ Struct Player
 	Score As Numeric
 End Struct
 
+Struct Quest
+	Id As Numeric
+	Name As String
+	RoomId As Numeric
+	Score As Numeric
+	ItemIdsRequired As List 'Of Numeric
+	CompletedMessage As String
+End Struct
+
 Struct Room
 	Id As Numeric
 	Name As String
@@ -86,6 +96,17 @@ Function CreatePlayer(name As String) As Player
 	p.Inventory = []
 	p.Score = 0
 	Return p
+End Function
+
+Function CreateQuest(id As Numeric, name As String, roomId As Numeric, score As Numeric, itemIdsRequired As List, completedMessage As String) As Quest
+	Var q As Quest
+	q.Id = id
+	q.Name = name
+	q.RoomId = roomId
+	q.Score = score
+	q.ItemIdsRequired = itemIdsRequired
+	q.CompletedMessage = completedMessage
+	Return q
 End Function
 
 Function CreateRoom(id As Numeric, name As String, desc As String, exits As List) As Room
@@ -122,6 +143,34 @@ Function LoadItems(itemsFileName As String) As List
 	'End For
 
 	Return items
+End Function
+
+Function LoadQuests(questsFileName As String) As List
+	Var quests As List = []
+
+	If File.Exists(questsFileName) Then
+		Const questData As String = File.ReadText(questsFileName)
+		Const lines As List = String.Split(questData, Environment.NewLine())
+		For i As Numeric = 1 To List.Len(lines)
+			If String.Trim(lines[i]) != "" Then
+				Const details As List = String.Split(lines[i], "|")
+				If List.Len(details) == 6 Then
+					'FIX: ItemIdsRequired - details[5]
+					quests = List.Append(quests, CreateQuest(details[1], details[2], details[3], details[4], [], details[6]))
+				Else
+					Console.PrintLine("ERROR: Malformed Quest " + i + "> " + lines[i])
+				End If
+			End If
+		End For
+	End If
+
+	'DEBUG:
+	Console.PrintLine("Found " + List.Len(quests) + " quests")
+	For i As Numeric = 1 To List.Len(quests)
+		PrintQuest(quests[i])
+	End For
+
+	Return quests
 End Function
 
 Function LoadRooms(roomsFileName As String) As List
@@ -186,6 +235,21 @@ Function PrintPlayer(p As Player)
 	Else
 		Console.PrintLine("<empty>")
 	End If
+End Function
+
+Function PrintQuest(q As Quest)
+	Console.PrintLine("[" + q.Name + "] (" + q.Score + ")")
+
+	'TODO: Room
+
+	Console.Print("Required Items: ")
+	'For i As Numeric = 1 To List.Len(q.Exits) Step 1
+	'	'TODO:
+	'End For
+
+	Console.PrintLine(q.CompletedMessage)
+
+	Console.PrintLine()
 End Function
 
 Function PrintRoom(r As Room)
