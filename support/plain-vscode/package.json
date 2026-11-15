@@ -3,9 +3,11 @@
   "displayName": "PLAIN Syntax Highlighting",
   "publisher": "plain",
   "version": "0.1.0",
+  "description": "Syntax highlighting for the PLAIN programming language.",
   "engines": {
     "vscode": "^1.60.0"
   },
+  "categories": ["Programming Languages"],
   "contributes": {
     "languages": [{
       "id": "plain",

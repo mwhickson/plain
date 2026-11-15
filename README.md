@@ -92,6 +92,16 @@ Console.Print("Nice to meet you, " + name)
 
 ## Usage
 
+### Building Binaries
+Build Linux and Windows x86-64 binaries from Linux with:
+```bash
+make build
+```
+
+The binaries are written to `dist/` as `plain-linux-amd64` and `plain-windows-amd64.exe`.
+Pushing a version tag in the form `v1.2.3` automatically builds both binaries and attaches
+them to a GitHub release.
+
 ### Running a Source File
 Execute a `.plain` file directly from the command line:
 ```bash
@@ -137,7 +147,9 @@ code --new-window \
 
 **OR**
 
-Build and install a `VSIX` package.
+Build and install a `VSIX` package with `make build` (or regenerate only the package with
+`python3 support/plain-vscode/build_vsix.py`). The package is written to
+`support/plain-vscode/plain-syntax-0.1.0.vsix`.
 
 > NOTE: Xcopy deployment for VS Code extensions is no longer possible.
 
