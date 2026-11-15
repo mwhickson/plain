@@ -3,6 +3,10 @@
 ' 2026-11-14 : Matthew Hickson
 '
 
+Const DEFAULT_HEALTH As Numeric = 100
+
+Const Items As List = []
+
 Const Rooms As List = [
 	CreateRoom(100, \
 		"Cave Entrance", \
@@ -24,16 +28,48 @@ System.Exit(Result)
 
 '----------
 
+Function Main() As Numeric
+	PrintIntroduction()
+
+	Const PlayerName As String = Console.Input("Enter your name: ")
+
+	Var player As Player = CreatePlayer(PlayerName)
+	PrintPlayer(player)
+
+	' exit cleanly
+	Return 0
+End Function
+
+Function MyErrorHandler(errMsg As String)
+    Console.Print("Caught runtime error: " + errMsg)
+End Function
+
+'----------
+
 Struct Exit
 	Direction As String
 	RoomId As Numeric
+End Struct
+
+Struct Item
+	Id As Numeric
+	Name As String
+	Description As String
+End Struct
+
+Struct Player
+	Name As String
+	CurrentHealth As Numeric
+	Health As Numeric
+	Inventory As List 'Of Item
+	Score As Numeric
 End Struct
 
 Struct Room
 	Id As Numeric
 	Name As String
 	Description As String
-	Exits As List
+	Exits As List 'Of Exit
 End Struct
 
 Function CreateExit(direction As String, roomId As Numeric) As Exit
@@ -41,6 +77,16 @@ Function CreateExit(direction As String, roomId As Numeric) As Exit
 	e.Direction = direction
 	e.RoomId = roomId
 	Return e
+End Function
+
+Function CreatePlayer(name As String) As Player
+	Var p As Player
+	p.Name = name
+	p.CurrentHealth = DEFAULT_HEALTH
+	p.Health = DEFAULT_HEALTH
+	p.Inventory = []
+	p.Score = 0
+	Return p
 End Function
 
 Function CreateRoom(id As Numeric, name As String, desc As String, exits As List) As Room
@@ -52,18 +98,22 @@ Function CreateRoom(id As Numeric, name As String, desc As String, exits As List
 	Return r
 End Function
 
-Function Main() As Numeric
-	Console.PrintLine("Adventure!")
-
-	For i As Numeric = 1 To List.Len(Rooms) Step 1
-		PrintRoom(Rooms[i])
-	End For
-
-	Return 0
+Function PrintIntroduction()
+	Console.PrintLine("Welcome to Adventure!")
+	Console.PrintLine("---------------------")
+	Console.PrintLine()
 End Function
 
-Function MyErrorHandler(errMsg As String)
-    Console.Print("Caught runtime error: " + errMsg)
+Function PrintPlayer(p As Player)
+	Console.PrintLine("Player: " + p.Name + " | Health: (" + p.CurrentHealth + "/" + p.Health + ") | Score: " + p.Score)
+	Console.PrintLine("Inventory")
+	If List.Len(p.Inventory) > 0 Then
+		For i As Numeric = 1 To List.Len(p.Inventory) Step 1
+			Console.PrintLine("- " + p.Inventory[i].Name + " (" + p.Inventory[i].Description + ")")
+		End For
+	Else
+		Console.PrintLine("<empty>")
+	End If
 End Function
 
 Function PrintRoom(r As Room)

@@ -152,6 +152,8 @@ func (vm *VM) runLoop() error {
 		op := bytecode.Opcode(vm.chunk.Code[vm.ip])
 		vm.ip++
 
+		// fmt.Printf("IP: %d | Opcode: %d (%s)\n", vm.ip-1, vm.chunk.Code[vm.ip-1], op) // DEBUG:
+
 		switch op {
 		case bytecode.OpAdd:
 			b, err := vm.Pop()
@@ -167,6 +169,9 @@ func (vm *VM) runLoop() error {
 				vm.Push(value.NewNumeric(a.Num + b.Num))
 			} else if a.Type == value.ValString && b.Type == value.ValString {
 				vm.Push(value.NewString(a.Str + b.Str))
+			} else if a.Type == value.ValString || b.Type == value.ValString {
+				// Coerce mixed string/numeric/other operands into string concatenation
+				vm.Push(value.NewString(a.String() + b.String()))
 			} else {
 				return fmt.Errorf("type error: '+' expects numeric or string operands, got %s and %s", a.Type, b.Type)
 			}
@@ -365,6 +370,30 @@ func (vm *VM) runLoop() error {
 				return fmt.Errorf("type error: property access '.' unsupported for type %s", targetVal.Type)
 			}
 
+		case bytecode.OpGt:
+			b, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			a, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			gt := (a.Type == value.ValNumeric && b.Type == value.ValNumeric && a.Num > b.Num)
+			vm.Push(value.NewBoolean(gt))
+
+		case bytecode.OpGte:
+			b, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			a, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			gte := (a.Type == value.ValNumeric && b.Type == value.ValNumeric && a.Num >= b.Num)
+			vm.Push(value.NewBoolean(gte))
+
 		case bytecode.OpHalt:
 			return nil
 
@@ -454,6 +483,18 @@ func (vm *VM) runLoop() error {
 			}
 			vm.Push(val)
 
+		case bytecode.OpLt:
+			b, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			a, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			lt := (a.Type == value.ValNumeric && b.Type == value.ValNumeric && a.Num < b.Num)
+			vm.Push(value.NewBoolean(lt))
+
 		case bytecode.OpLte:
 			b, err := vm.Pop()
 			if err != nil {
@@ -480,6 +521,18 @@ func (vm *VM) runLoop() error {
 			} else {
 				return fmt.Errorf("type error: '*' expects numeric operands")
 			}
+
+		case bytecode.OpNeq:
+			b, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			a, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			neq := !(a.Type == b.Type && a.Num == b.Num && a.Str == b.Str)
+			vm.Push(value.NewBoolean(neq))
 
 		case bytecode.OpPushConst:
 			constIdx := vm.chunk.Code[vm.ip]
