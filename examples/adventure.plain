@@ -3,13 +3,29 @@
 ' 2026-11-14 : Matthew Hickson
 '
 
+Const RoomCount As Numeric = 2 'HACK: until List length functionality is in...
+
+'HACK: room print testing
+Const TestRoom As Room = CreateRoom(100, \
+		"Cave Entrance", \
+		"The dark and foreboding entrance to a large cave.", \
+		[
+			CreateExit("North", 200),
+		])
+
 Const Rooms As List = [
 	CreateRoom(100, \
 		"Cave Entrance", \
-		"The dark and foreboding entrance to a large cave."),
+		"The dark and foreboding entrance to a large cave.", \
+		[
+			CreateExit("North", 200),
+		]),
 	CreateRoom(200, \
 		"Cave Room 1", \
-		"The room is dark, dank. The floor of the room is relatively flat and level, but dusty and with debris strewn about."),
+		"The room is dark, dank. The floor of the room is relatively flat and level, but dusty and with debris strewn about.", \
+		[
+			CreateExit("South", 100),
+		]),
 ]
 
 System.SetErrorHandler(MyErrorHandler)
@@ -18,25 +34,52 @@ System.Exit(Result)
 
 '----------
 
+Struct Exit
+	Direction As String
+	RoomId As Numeric
+End Struct
+
 Struct Room
 	Id As Numeric
 	Name As String
 	Description As String
+	Exits As List
 End Struct
 
-Function CreateRoom(id As Numeric, name As String, desc As String) As Room
+Function CreateExit(direction As String, roomId As Numeric) As Exit
+	Var e As Exit
+	e.Direction = direction
+	e.RoomId = roomId
+	Return e
+End Function
+
+Function CreateRoom(id As Numeric, name As String, desc As String, exits As List) As Room
 	Var r As Room
 	r.Id = id
 	r.Name = name
 	r.Description = desc
+	r.Exits = exits
 	Return r
 End Function
 
 Function Main() As Numeric
 	Console.PrintLine("Adventure!")
+	PrintRoom(TestRoom)
 	Return 0
 End Function
 
 Function MyErrorHandler(errMsg As String)
     Console.Print("Caught runtime error: " + errMsg)
 End Function
+
+Function PrintRoom(r As Room)
+	Console.PrintLine("[" + r.Name + "]")
+	Console.PrintLine(r.Description)
+	Console.Print("Exits: ")
+	'FIX: we need List length calculations to make this dynamic
+	'For i As Numeric = 1 To r.Exits[1]
+		'Console.Print(r.Exits[1].Direction + " | ") 'FIX: List indexing is also unlikely to work...
+	'End For
+	Console.PrintLine()
+End Function
+
