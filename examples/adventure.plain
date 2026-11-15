@@ -5,26 +5,13 @@
 
 Const ERROR_NO_ERRORS_SUCCESS As Numeric = 0
 Const ERROR_MISSING_ROOMS_FILE As Numeric = 1
+Const ERROR_MISSING_ITEMS_FILE As Numeric = 2
 
 Const DEFAULT_HEALTH As Numeric = 100
 
-Const Items As List = []
-
-Const Rooms As List = LoadRooms("examples/data/adventure/rooms.txt")
-'[
-'	CreateRoom(100, \
-'		"Cave Entrance", \
-'		"The dark and foreboding entrance to a large cave.", \
-'		[
-'			CreateExit("North", 200),
-'		]),
-'	CreateRoom(200, \
-'		"Cave Room 1", \
-'		"The room is dark, dank. The floor of the room is relatively flat and level, but dusty and with debris strewn about.", \
-'		[
-'			CreateExit("South", 100),
-'		]),
-']
+Const ScriptDir As String = Environment.GetScriptDir()
+Const Items As List = LoadItems(ScriptDir + "/data/adventure/items.txt")
+Const Rooms As List = LoadRooms(ScriptDir + "/data/adventure/rooms.txt")
 
 System.SetErrorHandler(MyErrorHandler)
 Const Result As Numeric = Main()
@@ -83,6 +70,14 @@ Function CreateExit(direction As String, roomId As Numeric) As Exit
 	Return e
 End Function
 
+Function CreateItem(id As Numeric, name As String, desc As String) As Item
+	Var i As Item
+	i.Id = id
+	i.Name = name
+	i.Description = desc
+	Return i
+End Function
+
 Function CreatePlayer(name As String) As Player
 	Var p As Player
 	p.Name = name
@@ -100,6 +95,33 @@ Function CreateRoom(id As Numeric, name As String, desc As String, exits As List
 	r.Description = desc
 	r.Exits = exits
 	Return r
+End Function
+
+Function LoadItems(itemsFileName As String) As List
+	Var items As List = []
+
+	If File.Exists(itemsFileName) Then
+		Const roomData As String = File.ReadText(itemsFileName)
+		Const lines As List = String.Split(roomData, Environment.NewLine())
+		For i As Numeric = 1 To List.Len(lines)
+			If String.Trim(lines[i]) != "" Then
+				Const details As List = String.Split(lines[i], "|")
+				If List.Len(details) == 3 Then
+					items = List.Append(items, CreateItem(details[1], details[2], details[3]))
+				Else
+					Console.PrintLine("ERROR: Malformed Item " + i + "> " + lines[i])
+				End If
+			End If
+		End For
+	End If
+
+	'DEBUG:
+	'Console.PrintLine("Found " + List.Len(items) + " items")
+	'For i As Numeric = 1 To List.Len(items)
+	'	PrintItem(items[i])
+	'End For
+
+	Return items
 End Function
 
 Function LoadRooms(roomsFileName As String) As List
@@ -148,6 +170,10 @@ Function PrintIntroduction()
 	Console.PrintLine("Welcome to Adventure!")
 	Console.PrintLine("---------------------")
 	Console.PrintLine()
+End Function
+
+Function PrintItem(i As Item)
+	Console.PrintLine("- " + i.Name + ": " + i.Description)
 End Function
 
 Function PrintPlayer(p As Player)

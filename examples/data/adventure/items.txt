@@ -1,0 +1,3 @@
+100|Bell|A small bell. It rings out clearly when used.
+200|Book|An imposing leather-bound tome.
+300|Key|An ornate key. You're not sure what it unlocks.

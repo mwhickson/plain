@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"plain/pkg/compiler"
+	"plain/pkg/modules"
 	"plain/pkg/parser"
 	"plain/pkg/vm"
 	"strconv"
@@ -19,6 +20,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Could not read file %s: %v\n", filename, err)
 			os.Exit(1)
 		}
+		modules.SetScriptPath(filename)
 		runSource(string(data))
 	} else {
 		startREPL()

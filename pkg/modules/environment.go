@@ -3,9 +3,16 @@ package modules
 import (
 	"fmt"
 	"os"
-	"runtime"
+	"path/filepath"
 	"plain/pkg/value"
+	"runtime"
 )
+
+var currentScriptPath string
+
+func SetScriptPath(path string) {
+	currentScriptPath = path
+}
 
 func GetEnvironmentModule() value.Value {
 	envModule := map[string]value.Value{
@@ -16,6 +23,7 @@ func GetEnvironmentModule() value.Value {
 		"SetEnv":       value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(envSetEnv)},
 		"GetTempDir":   value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(envGetTempDir)},
 		"GetHomeDir":   value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(envGetHomeDir)},
+		"GetScriptDir": value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(envGetScriptDir)},
 	}
 	return value.Value{
 		Type: value.ValStruct,
@@ -83,4 +91,19 @@ func envGetHomeDir(args []value.Value) (value.Value, error) {
 		return value.NewString(""), nil
 	}
 	return value.NewString(home), nil
+}
+
+func envGetScriptDir(args []value.Value) (value.Value, error) {
+	if len(args) != 0 {
+		return value.NewNone(), fmt.Errorf("Environment.GetScriptDir() takes 0 arguments")
+	}
+	if currentScriptPath == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			return value.NewString("."), nil
+		}
+		return value.NewString(wd), nil
+	}
+	dir := filepath.Dir(currentScriptPath)
+	return value.NewString(dir), nil
 }
