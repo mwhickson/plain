@@ -168,7 +168,7 @@ func TestCompilerRangeLoop(t *testing.T) {
 	}
 
 	// sum should hold 15 (1 + 2 + 3 + 4 + 5)
-	sumVal, exists := machine.Globals()[2] // Slots 0 and 1 are reserved for System and Console.
+	sumVal, exists := machine.Globals()[3] // Slots 0 through 2 are reserved for System, Console, and List.
 	if !exists {
 		t.Fatalf("expected variable 'sum' in globals")
 	}
@@ -207,7 +207,7 @@ func TestCompilerFunctionCall(t *testing.T) {
 	}
 
 	// Verify that 'result' holds 30
-	resultVal, exists := machine.Globals()[3] // Slots 0 and 1 are reserved; Add uses slot 2.
+	resultVal, exists := machine.Globals()[4] // Slots 0 through 2 are reserved; Add uses slot 3.
 	if !exists {
 		t.Fatalf("expected variable 'result' in globals")
 	}
@@ -404,7 +404,7 @@ func TestCompilerFibonacciRecursion(t *testing.T) {
 		t.Fatalf("vm execution error: %v", err)
 	}
 
-	resultVal, exists := machine.Globals()[3] // Slots 0 and 1 are reserved; Fib uses slot 2.
+	resultVal, exists := machine.Globals()[4] // Slots 0 through 2 are reserved; Fib uses slot 3.
 	if !exists {
 		t.Fatalf("expected variable 'result' in globals")
 	}
@@ -451,7 +451,7 @@ func TestCompilerMutualRecursion(t *testing.T) {
 		t.Fatalf("vm execution error: %v", err)
 	}
 
-	resultVal, exists := machine.Globals()[4] // Slots 0 and 1 are reserved; IsEven and IsOdd use 2 and 3.
+	resultVal, exists := machine.Globals()[5] // Slots 0 through 2 are reserved; IsEven and IsOdd use 3 and 4.
 	if !exists {
 		t.Fatalf("expected variable 'result' in globals")
 	}
@@ -493,8 +493,8 @@ func TestCompilerClosures(t *testing.T) {
 	}
 
 	// Verify that 'result' holds 15 in globals
-	// Slots 0 and 1 are reserved; MakeAdder, addFive, and result use 2, 3, and 4.
-	resultVal, exists := machine.Globals()[4]
+	// Slots 0 through 2 are reserved; MakeAdder, addFive, and result use 3, 4, and 5.
+	resultVal, exists := machine.Globals()[5]
 	if !exists {
 		t.Fatalf("expected variable 'result' in globals")
 	}
@@ -506,7 +506,7 @@ func TestCompilerClosures(t *testing.T) {
 func TestCompilerLists(t *testing.T) {
 	input := `
 	Var items As List = ["Apple", "Banana", "Cherry"]
-	Var first As String = items[0]
+	Var first As String = items[1]
 	`
 	l := parser.NewLexer(input)
 	p := parser.NewParser(l)
@@ -525,6 +525,64 @@ func TestCompilerLists(t *testing.T) {
 	machine := vm.NewVM(chunk)
 	if err := machine.Run(); err != nil {
 		t.Fatalf("vm execution error: %v", err)
+	}
+
+	first, exists := machine.Globals()[4]
+	if !exists || first.Type != value.ValString || first.Str != "Apple" {
+		t.Fatalf("first item = %v, want Apple", first)
+	}
+}
+
+func TestCompilerListIndexZeroIsOutOfBounds(t *testing.T) {
+	input := `
+	Var items As List = ["Apple", "Banana"]
+	Var first As String = items[0]
+	`
+	p := parser.NewParser(parser.NewLexer(input))
+	program := p.ParseProgram()
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+	machine := vm.NewVM(comp.Bytecode())
+	if err := machine.Run(); err == nil || err.Error() != "index out of bounds: 0 (length 2)" {
+		t.Fatalf("vm error = %v, want index-zero bounds error", err)
+	}
+}
+
+func TestCompilerFunctionLocalsInsideRangeLoop(t *testing.T) {
+	input := `
+	Function Sum(items As List) As Numeric
+		Var total As Numeric = 0
+		For i As Numeric = 1 To List.Len(items)
+			total = total + items[i]
+		End For
+		Return total
+	End Function
+
+	Const result As Numeric = Sum([10, 20])
+	`
+	p := parser.NewParser(parser.NewLexer(input))
+	program := p.ParseProgram()
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+	machine := vm.NewVM(comp.Bytecode())
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+	result, exists := machine.Globals()[4]
+	if !exists || result.Type != value.ValNumeric || result.Num != 30 {
+		t.Fatalf("sum result = %v, want 30", result)
 	}
 }
 
@@ -587,7 +645,7 @@ func TestCompilerDefaultStructValues(t *testing.T) {
 		t.Fatalf("vm execution error: %v", err)
 	}
 
-	roomsValue, exists := machine.Globals()[3]
+	roomsValue, exists := machine.Globals()[4]
 	if !exists || roomsValue.Type != value.ValList {
 		t.Fatalf("Rooms global = %v, want list", roomsValue)
 	}

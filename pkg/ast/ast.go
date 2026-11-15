@@ -184,7 +184,7 @@ func (is *IfStatement) String() string {
 }
 
 //
-// IndexExpression represents an index access like items[0]
+// IndexExpression represents a 1-based index access like items[1]
 //
 
 type IndexExpression struct {

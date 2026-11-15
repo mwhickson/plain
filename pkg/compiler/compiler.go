@@ -32,6 +32,7 @@ func New() *Compiler {
 	// Pre-register standard modules in the global symbol table
 	c.registerGlobalModule("System")  // Slot 0
 	c.registerGlobalModule("Console") // Slot 1
+	c.registerGlobalModule("List")    // Slot 2
 
 	return c
 }
@@ -278,7 +279,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 
 		// 4. Enter enclosed symbol table for the function scope
 		oldSymbolTable := c.symbolTable
-		c.symbolTable = NewEnclosedSymbolTable(oldSymbolTable)
+		c.symbolTable = NewFunctionSymbolTable(oldSymbolTable)
 
 		oldInFunction := c.inFunction
 		c.inFunction = true

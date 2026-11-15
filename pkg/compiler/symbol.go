@@ -16,10 +16,11 @@ type Symbol struct {
 }
 
 type SymbolTable struct {
-	Parent         *SymbolTable
-	Store          map[string]Symbol
-	FreeSymbols    []Symbol
-	NumDefinitions int
+	Parent          *SymbolTable
+	Store           map[string]Symbol
+	FreeSymbols     []Symbol
+	NumDefinitions  int
+	IsFunctionScope bool
 }
 
 func NewSymbolTable() *SymbolTable {
@@ -32,6 +33,12 @@ func NewSymbolTable() *SymbolTable {
 func NewEnclosedSymbolTable(outer *SymbolTable) *SymbolTable {
 	s := NewSymbolTable()
 	s.Parent = outer
+	return s
+}
+
+func NewFunctionSymbolTable(outer *SymbolTable) *SymbolTable {
+	s := NewEnclosedSymbolTable(outer)
+	s.IsFunctionScope = true
 	return s
 }
 
@@ -63,6 +70,10 @@ func (s *SymbolTable) Resolve(name string) (Symbol, bool) {
 
 	// Globals don't need to be captured as free variables
 	if symbol.Scope == GlobalScope {
+		return symbol, true
+	}
+
+	if !s.IsFunctionScope {
 		return symbol, true
 	}
 

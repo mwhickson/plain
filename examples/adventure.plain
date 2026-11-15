@@ -3,16 +3,6 @@
 ' 2026-11-14 : Matthew Hickson
 '
 
-Const RoomCount As Numeric = 2 'HACK: until List length functionality is in...
-
-'HACK: room print testing
-Const TestRoom As Room = CreateRoom(100, \
-		"Cave Entrance", \
-		"The dark and foreboding entrance to a large cave.", \
-		[
-			CreateExit("North", 200),
-		])
-
 Const Rooms As List = [
 	CreateRoom(100, \
 		"Cave Entrance", \
@@ -64,7 +54,11 @@ End Function
 
 Function Main() As Numeric
 	Console.PrintLine("Adventure!")
-	PrintRoom(TestRoom)
+
+	For i As Numeric = 1 To List.Len(Rooms) Step 1
+		PrintRoom(Rooms[i])
+	End For
+
 	Return 0
 End Function
 
@@ -75,11 +69,11 @@ End Function
 Function PrintRoom(r As Room)
 	Console.PrintLine("[" + r.Name + "]")
 	Console.PrintLine(r.Description)
+
 	Console.Print("Exits: ")
-	'FIX: we need List length calculations to make this dynamic
-	'For i As Numeric = 1 To r.Exits[1]
-		'Console.Print(r.Exits[1].Direction + " | ") 'FIX: List indexing is also unlikely to work...
-	'End For
+	For i As Numeric = 1 To List.Len(r.Exits) Step 1
+		Console.Print(r.Exits[i].Direction + " | ")
+	End For
+
 	Console.PrintLine()
 End Function
-

@@ -82,7 +82,7 @@ All opcodes are 1-byte wide. Operands immediately follow their respective opcode
 | `OpLoadFree` | `free_idx` (1 byte) | `[] -> [val]` | Pushes captured closure variable from `frame.closure.Free[free_idx]`. |
 | `OpBuildList` | `count` (1 byte) | `[e1..eN] -> [list]` | Pops `count` elements and constructs a `ValList`. |
 | `OpBuildStruct` | `const_idx` (1 byte) | `[] -> [struct]` | Clones a struct default template into a fresh record value. |
-| `OpIndex` | None | `[list, idx] -> [val]` | Indexes `list[idx]` and pushes the resulting element. |
+| `OpIndex` | None | `[list, idx] -> [val]` | Uses a 1-based index and pushes the corresponding element; valid indices are `1` through the list length. |
 | `OpGetProperty` | `const_idx` (1 byte) | `[struct] -> [val]` | Pops `struct`, looks up property named by `Constants[const_idx]`, pushes value. |
 | `OpSetProperty` | `const_idx` (1 byte) | `[struct, val] -> []` | Pops `val` and `struct`, sets property named by `Constants[const_idx]` to `val`. |
 | `OpJump` | `target` (2 bytes) | `[] -> []` | Unconditionally sets `IP` to 16-bit absolute target offset. |
@@ -117,6 +117,7 @@ type VM struct {
 Upon initialization (`NewVM`), the VM populates reserved global variable slots before script execution begins:
 - **Slot `0`:** `System` module (`SetErrorHandler`, `Exit`)
 - **Slot `1`:** `Console` module (`Print`, `PrintLine`, `Input`, `Cls`)
+- **Slot `2`:** `List` module (`Len`, `Contains`, `Append`, `Reverse`)
 
 ### 5.2 Runtime Error Interception (`handleError`)
 If an instruction produces a runtime fault (such as division by zero, type mismatch, or out-of-bounds list indexing), the VM checks whether a handler has been registered via `System.SetErrorHandler`.

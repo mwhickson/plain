@@ -32,6 +32,7 @@ func NewVM(chunk *bytecode.Chunk) *VM {
 	// Bind standard modules to global slots
 	vm.globals[0] = modules.GetSystemModule()
 	vm.globals[1] = modules.GetConsoleModule()
+	vm.globals[2] = modules.GetListModule()
 	modules.GlobalErrorHandler = value.NewNone()
 
 	// Setup root frame for main script
@@ -382,9 +383,12 @@ func (vm *VM) runLoop() error {
 					return fmt.Errorf("type error: list index must be numeric, got %s", indexVal.Type)
 				}
 				list := leftVal.Obj.([]value.Value)
-				idx := int(indexVal.Num)
+
+				// 1-based indexing adjustment: convert user index to 0-based slice index
+				idx := int(indexVal.Num) - 1
+
 				if idx < 0 || idx >= len(list) {
-					return fmt.Errorf("index out of bounds: %d (length %d)", idx, len(list))
+					return fmt.Errorf("index out of bounds: %d (length %d)", int(indexVal.Num), len(list))
 				}
 				vm.Push(list[idx])
 			} else {
@@ -424,6 +428,9 @@ func (vm *VM) runLoop() error {
 			if currentFrame.closure == nil {
 				return fmt.Errorf("no active closure in root frame")
 			}
+			if int(freeIndex) >= len(currentFrame.closure.Free) {
+				return fmt.Errorf("free variable index %d out of bounds (count %d)", freeIndex, len(currentFrame.closure.Free))
+			}
 			val := currentFrame.closure.Free[int(freeIndex)]
 			vm.Push(val)
 
@@ -431,7 +438,11 @@ func (vm *VM) runLoop() error {
 			slotIndex := vm.chunk.Code[vm.ip]
 			vm.ip++
 			currentFrame := vm.frames[vm.frameIndex-1]
-			val := vm.stack[currentFrame.basePointer+int(slotIndex)]
+			stackIndex := currentFrame.basePointer + int(slotIndex)
+			if stackIndex >= len(vm.stack) {
+				return fmt.Errorf("local variable slot %d out of bounds (stack size %d)", slotIndex, len(vm.stack)-currentFrame.basePointer)
+			}
+			val := vm.stack[stackIndex]
 			vm.Push(val)
 
 		case bytecode.OpLoadVar:
@@ -526,12 +537,16 @@ func (vm *VM) runLoop() error {
 		case bytecode.OpStoreLocal:
 			slotIndex := vm.chunk.Code[vm.ip]
 			vm.ip++
+			currentFrame := vm.frames[vm.frameIndex-1]
+			stackIndex := currentFrame.basePointer + int(slotIndex)
+			if stackIndex >= len(vm.stack) {
+				return fmt.Errorf("local variable slot %d out of bounds (stack size %d)", slotIndex, len(vm.stack)-currentFrame.basePointer)
+			}
 			val, err := vm.Pop()
 			if err != nil {
 				return err
 			}
-			currentFrame := vm.frames[vm.frameIndex-1]
-			vm.stack[currentFrame.basePointer+int(slotIndex)] = val
+			vm.stack[stackIndex] = val
 
 		case bytecode.OpStoreVar:
 			dataIndex := vm.chunk.Code[vm.ip]
@@ -577,7 +592,7 @@ func cloneValue(val value.Value) value.Value {
 		fields := val.Obj.(map[string]value.Value)
 		cloned := make(map[string]value.Value, len(fields))
 		for name, field := range fields {
-			cloned[name] = cloneValue(field)
+			cloned[name] = cloneValue(field) // Recursively clone fields, including nested lists
 		}
 		val.Obj = cloned
 	}

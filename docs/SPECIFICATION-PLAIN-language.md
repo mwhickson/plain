@@ -25,7 +25,7 @@ PLAIN features a small, opinionated set of primitive and composite types:
 | `Numeric` | Unified number type for integer and floating-point math | 64-bit float (`double`) / High-precision decimal |
 | `Boolean` | Truth value (`True` or `False`) | 1-bit boolean |
 | `None` | Represents the absence of a value | Unit / None singleton |
-| `List` | Dynamic, ordered sequence of elements | Dynamic array |
+| `List` | Dynamic, ordered sequence of elements with 1-based indexing | Dynamic array |
 | `Struct` | Heterogeneous key-value record and data container | Map / Named record |
 | `Function` | First-class executable blocks, closures, and native builtins | Function / Closure pointer |
 

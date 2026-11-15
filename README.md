@@ -20,11 +20,12 @@ PLAIN, and its associated tooling, is intended to fill software development nich
 - **Comments:** Single-quote (`'`) line comments.
 - **Control Flow:** Conditional branching (`If...Then...Else...End If`) and range-based loops (`For...To...Step...End For`).
 - **Functions & Closures:** First-class functions, recursion, mutual recursion, and lexical closures capturing enclosing scope variables.
-- **Data Structures:** Heterogeneous lists (`[1, 2, 3]`) with zero-based indexing, and user-defined `Struct` types with dot-notation property access and assignment.
+- **Data Structures:** Heterogeneous lists (`[1, 2, 3]`) with 1-based indexing, and user-defined `Struct` types with dot-notation property access and assignment.
 - **Receiver Functions:** Methods bound to struct types (e.g., `Function (v As Vector2D) Scale(...)`).
 - **Standard Library (`pkg/modules`):**
   - `System`: Built-in system functions (`System.SetErrorHandler`, `System.Exit`).
   - `Console`: Built-in terminal I/O functions (`Console.Print`, `Console.PrintLine`, `Console.Input`, `Console.Cls`).
+  - `List`: List utilities (`List.Len`, `List.Contains`, `List.Append`, `List.Reverse`).
 - **Bytecode Disassembler:** Built-in instruction disassembly for inspecting compiled chunks.
 
 ## Language Examples

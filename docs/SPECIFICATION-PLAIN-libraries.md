@@ -139,16 +139,15 @@ Standard library modules are exposed as global `Struct` namespaces pre-registere
   * `Parse(jsonString)`
   * `Stringify(value)`
 
-### List *(Planned)*
+### List *(Implemented — Global Slot 2)*
 
-* **Purpose**: High-order collection utilities for searching, sorting, and transforming lists.
-* **Functions**:
+* **Purpose**: Basic collection operations for PLAIN lists.
+* **Implemented Functions**:
   * `Contains(list, value)`
-  * `Filter(list, predicateFn)`
-  * `Find(list, predicateFn)`
-  * `Map(list, transformFn)`
+  * `Len(list)`
+  * `Append(list, value)` — Return a list with `value` appended.
   * `Reverse(list)`
-  * `Sort(list, comparatorFn)`
+* **Indexing**: List elements use 1-based indices, from `1` through `List.Len(list)`.
 
 ### Locale *(Candidate / Future)*
 
