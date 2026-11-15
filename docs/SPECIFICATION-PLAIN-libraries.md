@@ -183,6 +183,12 @@ Standard library modules are exposed as global `Struct` namespaces pre-registere
   * `Put(url, body)`
   * `SetHeader(key, value)`
 
+### PDF *(Planned)*
+
+* **Purpose**: PDF generation.
+* **Functions**:
+  * TBD
+
 ### Random *(Implemented — Global Slot 6)*
 
 * **Purpose**: Pseudo-random number generation and list selection.

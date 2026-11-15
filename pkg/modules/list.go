@@ -48,8 +48,7 @@ func listAppend(args []value.Value) (value.Value, error) {
 	}
 	list := args[0].Obj.([]value.Value)
 	updated := append(list, args[1])
-	args[0].Obj = updated
-	return args[0], nil
+	return value.Value{Type: value.ValList, Obj: updated}, nil
 }
 
 func listReverse(args []value.Value) (value.Value, error) {

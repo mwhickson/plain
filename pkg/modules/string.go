@@ -18,6 +18,8 @@ func GetStringModule() value.Value {
 		"Split":   value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringSplit)},
 		"Join":    value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringJoin)},
 		"Replace": value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringReplace)},
+		"Chr":     value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringChr)},
+		"Trim":    value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringTrim)},
 	}
 	return value.Value{
 		Type: value.ValStruct,
@@ -159,4 +161,22 @@ func stringReplace(args []value.Value) (value.Value, error) {
 	}
 	res := strings.ReplaceAll(args[0].Str, args[1].Str, args[2].Str)
 	return value.NewString(res), nil
+}
+
+func stringChr(args []value.Value) (value.Value, error) {
+	if len(args) != 1 || args[0].Type != value.ValNumeric {
+		return value.NewNone(), fmt.Errorf("String.Chr() requires 1 Numeric code argument")
+	}
+	code := int(args[0].Num)
+	if code < 0 || code > 0x10FFFF {
+		return value.NewNone(), fmt.Errorf("String.Chr() code out of Unicode range: %d", code)
+	}
+	return value.NewString(string(rune(code))), nil
+}
+
+func stringTrim(args []value.Value) (value.Value, error) {
+	if len(args) != 1 || args[0].Type != value.ValString {
+		return value.NewNone(), fmt.Errorf("String.Trim() requires 1 String argument")
+	}
+	return value.NewString(strings.TrimSpace(args[0].Str)), nil
 }

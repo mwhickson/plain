@@ -3,24 +3,28 @@
 ' 2026-11-14 : Matthew Hickson
 '
 
+Const ERROR_NO_ERRORS_SUCCESS As Numeric = 0
+Const ERROR_MISSING_ROOMS_FILE As Numeric = 1
+
 Const DEFAULT_HEALTH As Numeric = 100
 
 Const Items As List = []
 
-Const Rooms As List = [
-	CreateRoom(100, \
-		"Cave Entrance", \
-		"The dark and foreboding entrance to a large cave.", \
-		[
-			CreateExit("North", 200),
-		]),
-	CreateRoom(200, \
-		"Cave Room 1", \
-		"The room is dark, dank. The floor of the room is relatively flat and level, but dusty and with debris strewn about.", \
-		[
-			CreateExit("South", 100),
-		]),
-]
+Const Rooms As List = LoadRooms("examples/data/adventure/rooms.txt")
+'[
+'	CreateRoom(100, \
+'		"Cave Entrance", \
+'		"The dark and foreboding entrance to a large cave.", \
+'		[
+'			CreateExit("North", 200),
+'		]),
+'	CreateRoom(200, \
+'		"Cave Room 1", \
+'		"The room is dark, dank. The floor of the room is relatively flat and level, but dusty and with debris strewn about.", \
+'		[
+'			CreateExit("South", 100),
+'		]),
+']
 
 System.SetErrorHandler(MyErrorHandler)
 Const Result As Numeric = Main()
@@ -37,7 +41,7 @@ Function Main() As Numeric
 	PrintPlayer(player)
 
 	' exit cleanly
-	Return 0
+	Return ERROR_NO_ERRORS_SUCCESS
 End Function
 
 Function MyErrorHandler(errMsg As String)
@@ -98,7 +102,49 @@ Function CreateRoom(id As Numeric, name As String, desc As String, exits As List
 	Return r
 End Function
 
+Function LoadRooms(roomsFileName As String) As List
+	Var rooms As List = []
+
+	If File.Exists(roomsFileName) Then
+		Const roomData As String = File.ReadText(roomsFileName)
+		Const lines As List = String.Split(roomData, Environment.NewLine())
+		For i As Numeric = 1 To List.Len(lines)
+			If String.Trim(lines[i]) != "" Then
+				Const details As List = String.Split(lines[i], "|")
+				If List.Len(details) == 4 Then
+					'WARN: Lists are immutable (by design), so result needs to be assigned back to the source.
+					Var exits As List = []
+					If String.Trim(details[4]) != "" Then
+						Const exitList As List = String.Split(details[4], ",")
+						For j As Numeric = 1 To List.Len(exitList)
+							Const exitData As List = String.Split(exitList[j], ":")
+							If List.Len(exitData) == 2 Then
+								exits = List.Append(exits, CreateExit(exitData[1], exitData[2]))
+							End If
+						End For
+					End If
+					rooms = List.Append(rooms, CreateRoom(details[1], details[2], details[3], exits))
+				Else
+					Console.PrintLine("ERROR: Malformed Room " + i + "> " + lines[i])
+				End If
+			End If
+		End For
+	Else
+		Console.PrintLine("ERROR: Could not load rooms file '" + roomsFileName + "'")
+		System.Exit(ERROR_MISSING_ROOMS_FILE)
+	End If
+
+	'DEBUG:
+	'Console.PrintLine("Found " + List.Len(rooms) + " rooms")
+	'For i As Numeric = 1 To List.Len(rooms)
+	'	PrintRoom(rooms[i])
+	'End For
+
+	Return rooms
+End Function
+
 Function PrintIntroduction()
+	'Console.Cls()
 	Console.PrintLine("Welcome to Adventure!")
 	Console.PrintLine("---------------------")
 	Console.PrintLine()
