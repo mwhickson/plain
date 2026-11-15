@@ -33,6 +33,13 @@ func NewVM(chunk *bytecode.Chunk) *VM {
 	vm.globals[0] = modules.GetSystemModule()
 	vm.globals[1] = modules.GetConsoleModule()
 	vm.globals[2] = modules.GetListModule()
+	vm.globals[3] = modules.GetStringModule()
+	vm.globals[4] = modules.GetStructModule()
+	vm.globals[5] = modules.GetMathModule()
+	vm.globals[6] = modules.GetRandomModule()
+	vm.globals[7] = modules.GetFileModule()
+	vm.globals[8] = modules.GetTimeModule()
+	vm.globals[9] = modules.GetDecimalModule()
 	modules.GlobalErrorHandler = value.NewNone()
 
 	// Setup root frame for main script

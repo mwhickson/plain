@@ -188,6 +188,12 @@ Standard library modules are exposed as global `Struct` namespaces pre-registere
   * `Put(url, body)`
   * `SetHeader(key, value)`
 
+### Random
+
+* **Purpose**: General randomization support.
+* **Functions**:
+  * TBD
+
 ### Sound *(Planned)*
 
 * **Purpose**: Audio playback for sound effects and basic background tracks.

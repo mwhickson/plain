@@ -33,6 +33,13 @@ func New() *Compiler {
 	c.registerGlobalModule("System")  // Slot 0
 	c.registerGlobalModule("Console") // Slot 1
 	c.registerGlobalModule("List")    // Slot 2
+	c.registerGlobalModule("String")  // Slot 3
+	c.registerGlobalModule("Struct")  // Slot 4
+	c.registerGlobalModule("Math")    // Slot 5
+	c.registerGlobalModule("Random")  // Slot 6
+	c.registerGlobalModule("File")    // Slot 7
+	c.registerGlobalModule("Time")    // Slot 8
+	c.registerGlobalModule("Decimal") // Slot 9
 
 	return c
 }
