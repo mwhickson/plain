@@ -1,0 +1,135 @@
+'
+' file.plain
+' 2026-11-15 : Matthew Hickson
+'
+
+Const ERROR_NO_ERRORS_SUCCESS As Numeric = 0
+
+Const DATA_PATH As String = Environment.GetScriptDir() + "/data/lined/"
+
+Const MORE_THAN_YOU_SHOULD_EVER_NEED As Numeric = 10000
+
+Const LinedTitle As String = "Lined v0.01 - Brutal line editing for a brutal time?"
+Const LinedCommandMenu As String = "N)ew File | V)iew File | S)ave File | L)oad File | D)elete Line | E)dit Line | H)elp | Q)uit :"
+Const LinedCommandTrigger As String = ":"
+
+System.SetErrorHandler(MyErrorHandler)
+Const Result As Numeric = Main()
+System.Exit(Result)
+
+'----------
+
+Function Main() As Numeric
+    Console.Cls()
+    Console.PrintLine("PLAIN File Demo")
+    Console.PrintLine("------------------")
+    Console.PrintLine()
+
+    Var lines As List = []
+
+    Console.PrintLine(LinedTitle)
+    Console.PrintLine(LinedCommandMenu)
+
+    Var command As String
+    Var line As String
+    For i As Numeric = 1 To MORE_THAN_YOU_SHOULD_EVER_NEED
+        line = Console.Input("")
+        If String.Len(line) > 0 Then
+            If String.Left(line, 1) == LinedCommandTrigger Then
+                'Process command
+                If String.Len(line) > 1 Then
+                    command = String.Upper(String.Right(String.Left(line, 2), 1))
+                    If command == "N" Then
+                        lines = []
+                    End If
+
+                    If command == "V" Then
+                        For v As Numeric = 1 To List.Len(lines)
+                            Console.PrintLine(v + "> " + lines[v])
+                        End For
+                    End If
+
+                    If command == "S" Then
+                        Var savefile As String = Console.Input("filename: ")
+                        'WARN: No check to see if we're overwriting anything! Brutal!
+                        File.WriteText(DATA_PATH + savefile, String.Join(lines, Environment.NewLine()))
+                    End If
+
+                    If command == "L" Then
+                        Var loadfile As String = Console.Input("filename: ")
+                        If File.Exists(DATA_PATH + loadfile) Then
+                            'WARN: No prompt to save your work! Brutal!
+                            Var loaddata As String = File.ReadText(DATA_PATH + loadfile)
+                            lines = String.Split(loaddata, Environment.NewLine())
+                        End If
+                    End If
+
+                    If command == "D" Then
+                        Var deleteLineNumber As String = Console.Input("line: ")
+                        Var dln As Numeric = String.ToNumeric(deleteLineNumber)
+                        If dln > 0 Then
+                            If dln <= List.Len(lines) Then
+                                'YUCK: this needs work!
+                                Var dtemp As List
+                                For d As Numeric = 1 To List.Len(lines)
+                                    If d != dln Then
+                                        dtemp = List.Append(dtemp, lines[d])
+                                    End If
+                                End For
+                                lines = dtemp
+                            End If
+                        End If
+                    End If
+
+                    If command == "E" Then
+                        Var editLineNumber As String = Console.Input("line: ")
+                        Var eln As Numeric = String.ToNumeric(editLineNumber)
+                        If eln > 0 Then
+                            If eln <= List.Len(lines) Then
+                                Console.PrintLine(eln + "> " + lines[eln])
+                                Var lineEdit As String = Console.Input("")
+                                'lines[eln] = lineEdit
+                                'YUCK: this needs work!
+                                Var etemp As List
+                                For e As Numeric = 1 To List.Len(lines)
+                                    If e != eln Then
+                                        etemp = List.Append(etemp, lines[e])
+                                    Else
+                                        etemp = List.Append(etemp, lineEdit)
+                                    End If
+                                End For
+                                lines = etemp
+                            End If
+                        End If
+                    End If
+
+                    If command == "H" Then
+                        'Brutal!
+                        Console.PrintLine("There is no help.")
+                    End If
+
+                    If command == "Q" Then
+                        i = MORE_THAN_YOU_SHOULD_EVER_NEED
+                    Else
+                        i = 1 'reset to keep our loop infinite
+                    End If
+                End If
+            Else
+                'Add line
+                lines = List.Append(lines, line)
+            End If
+        Else
+            'Add a blank line
+            lines = List.Append(lines, "")
+        End If
+    End For
+
+	' exit cleanly
+	Return ERROR_NO_ERRORS_SUCCESS
+End Function
+
+Function MyErrorHandler(errMsg As String)
+    Console.Print("Caught runtime error: " + errMsg)
+End Function
+
+'----------
