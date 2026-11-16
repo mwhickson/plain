@@ -1,0 +1,34 @@
+'
+' environment.plain
+' 2026-11-15 : Matthew Hickson
+'
+
+Const ERROR_NO_ERRORS_SUCCESS As Numeric = 0
+
+System.SetErrorHandler(MyErrorHandler)
+Const Result As Numeric = Main()
+System.Exit(Result)
+
+'----------
+
+Function Main() As Numeric
+    Console.Cls()
+    Console.PrintLine("PLAIN Environment Demo")
+    Console.PrintLine("------------------")
+    Console.PrintLine()
+
+    Console.PrintLine("Platform: " + Environment.GetPlatform())
+    Console.PrintLine("Platform architecture: " + Environment.GetArch())
+    Console.PrintLine("Current user's Home directory: " + Environment.GetHomeDir())
+    Console.PrintLine("Current script directory: " + Environment.GetScriptDir())
+    Console.PrintLine("Environment (PATH): " + Environment.GetEnv("PATH"))
+
+	' exit cleanly
+	Return ERROR_NO_ERRORS_SUCCESS
+End Function
+
+Function MyErrorHandler(errMsg As String)
+    Console.Print("Caught runtime error: " + errMsg)
+End Function
+
+'----------
