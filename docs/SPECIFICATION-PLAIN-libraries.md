@@ -142,10 +142,15 @@ Standard library modules are exposed as global `Struct` namespaces pre-registere
 * **Purpose**: Basic collection operations for PLAIN lists.
 * **Implemented Functions**:
   * `Contains(list, value)`
+  * `Delete(list, index)` — Return a copy with the 1-based item removed.
   * `Len(list)`
-  * `Append(list, value)` — Return a list with `value` appended.
+  * `Append(list, value)` — Return a copy with `value` appended.
   * `Reverse(list)`
+  * `Update(list, index, value)` — Return a copy with the 1-based item replaced.
 * **Indexing**: List elements use 1-based indices, from `1` through `List.Len(list)`.
+* **Immutability**: `Append`, `Delete`, `Reverse`, and `Update` return new lists and
+  leave the input list unchanged. `Delete` and `Update` require a valid 1-based
+  whole-number index.
 
 ### Locale *(Candidate / Future)*
 

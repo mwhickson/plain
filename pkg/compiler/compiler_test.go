@@ -895,3 +895,21 @@ func TestCompilerStandardLibraryModules(t *testing.T) {
 		t.Fatal("standard library reserved an unexpected final slot")
 	}
 }
+
+func TestFileExampleCompiles(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join("..", "..", "examples", "file.plain"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p := parser.NewParser(parser.NewLexer(string(source)))
+	program := p.ParseProgram()
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors in file example: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error in file example: %v", err)
+	}
+}

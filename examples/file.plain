@@ -61,37 +61,16 @@ Function Main() As Numeric
                         Case "D"
                             Var deleteLineNumber As String = Console.Input("line: ")
                             Var dln As Numeric = String.ToNumeric(deleteLineNumber)
-                            If dln > 0 Then
-                                If dln <= List.Len(lines) Then
-                                    'YUCK: this needs work!
-                                    Var dtemp As List
-                                    For d As Numeric = 1 To List.Len(lines)
-                                        If d != dln Then
-                                            dtemp = List.Append(dtemp, lines[d])
-                                        End If
-                                    End For
-                                    lines = dtemp
-                                End If
+                            If dln > 0 And dln <= List.Len(lines) And dln == Math.Floor(dln) Then
+                                lines = List.Delete(lines, dln)
                             End If
                         Case "E"
                             Var editLineNumber As String = Console.Input("line: ")
                             Var eln As Numeric = String.ToNumeric(editLineNumber)
-                            If eln > 0 Then
-                                If eln <= List.Len(lines) Then
-                                    Console.PrintLine(eln + "> " + lines[eln])
-                                    Var lineEdit As String = Console.Input("")
-                                    'lines[eln] = lineEdit
-                                    'YUCK: this needs work!
-                                    Var etemp As List
-                                    For e As Numeric = 1 To List.Len(lines)
-                                        If e != eln Then
-                                            etemp = List.Append(etemp, lines[e])
-                                        Else
-                                            etemp = List.Append(etemp, lineEdit)
-                                        End If
-                                    End For
-                                    lines = etemp
-                                End If
+                            If eln > 0 And eln <= List.Len(lines) And eln == Math.Floor(eln) Then
+                                Console.PrintLine(eln + "> " + lines[eln])
+                                Var lineEdit As String = Console.Input("")
+                                lines = List.Update(lines, eln, lineEdit)
                             End If
                         Case "H"
                             'Brutal!

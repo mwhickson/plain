@@ -112,6 +112,66 @@ func TestStructModuleKeysAreStable(t *testing.T) {
 	}
 }
 
+func TestListModuleImmutableItemOperations(t *testing.T) {
+	module := GetListModule()
+	backing := make([]value.Value, 2, 3)
+	backing[0] = value.NewString("first")
+	backing[1] = value.NewString("second")
+	original := value.Value{Type: value.ValList, Obj: backing}
+
+	appended := callModule(t, module, "Append", original, value.NewString("third"))
+	updated := callModule(t, module, "Update", original, value.NewNumeric(2), value.NewString("changed"))
+	deleted := callModule(t, module, "Delete", original, value.NewNumeric(1))
+
+	if got := appended.Obj.([]value.Value); !reflect.DeepEqual(got, []value.Value{
+		value.NewString("first"), value.NewString("second"), value.NewString("third"),
+	}) {
+		t.Fatalf("List.Append() = %v, want [first second third]", got)
+	}
+	if got := updated.Obj.([]value.Value); !reflect.DeepEqual(got, []value.Value{
+		value.NewString("first"), value.NewString("changed"),
+	}) {
+		t.Fatalf("List.Update() = %v, want [first changed]", got)
+	}
+	if got := deleted.Obj.([]value.Value); !reflect.DeepEqual(got, []value.Value{
+		value.NewString("second"),
+	}) {
+		t.Fatalf("List.Delete() = %v, want [second]", got)
+	}
+	if got := original.Obj.([]value.Value); !reflect.DeepEqual(got, []value.Value{
+		value.NewString("first"), value.NewString("second"),
+	}) {
+		t.Fatalf("list operation changed its input: %v", got)
+	}
+	if backing[:3][2].Type != value.ValNone {
+		t.Fatalf("List.Append() modified the input list's spare capacity: %v", backing[:3][2])
+	}
+}
+
+func TestListUpdateAndDeleteRejectInvalidIndices(t *testing.T) {
+	module := GetListModule()
+	exports := module.Obj.(map[string]value.Value)
+	list := value.Value{Type: value.ValList, Obj: []value.Value{value.NewString("item")}}
+	tests := []struct {
+		name      string
+		operation string
+		args      []value.Value
+	}{
+		{"Delete zero", "Delete", []value.Value{list, value.NewNumeric(0)}},
+		{"Delete fractional", "Delete", []value.Value{list, value.NewNumeric(1.5)}},
+		{"Delete out of range", "Delete", []value.Value{list, value.NewNumeric(2)}},
+		{"Update non-numeric", "Update", []value.Value{list, value.NewString("1"), value.NewString("new")}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fn := exports[test.operation].Obj.(value.BuiltinFunction)
+			if _, err := fn(test.args); err == nil {
+				t.Fatalf("List.%s() accepted invalid index arguments %v", test.operation, test.args)
+			}
+		})
+	}
+}
+
 func TestMathAndDecimalModules(t *testing.T) {
 	mathModule := GetMathModule()
 	if got := callModule(t, mathModule, "Sqrt", value.NewNumeric(9)); got.Num != 3 {
