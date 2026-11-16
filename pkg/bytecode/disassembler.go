@@ -42,7 +42,7 @@ func DisassembleInstruction(c *Chunk, offset int) int {
 		return offset + 3
 
 	case OpNop, OpPushNone, OpPushTrue, OpPushFalse, OpPop,
-		OpAdd, OpSub, OpMul, OpDiv, OpMod, OpNegate,
+		OpAdd, OpAnd, OpOr, OpSub, OpMul, OpDiv, OpMod, OpNegate,
 		OpEq, OpNeq, OpLt, OpLte, OpGt, OpGte, OpIndex,
 		OpReturn, OpHalt:
 		fmt.Printf("%s\n", op)

@@ -391,43 +391,102 @@ func (c *Compiler) Compile(node ast.Node) error {
 		return nil
 
 	case *ast.IfStatement:
-		// 1. Compile the condition expression
-		if err := c.Compile(n.Condition); err != nil {
-			return err
-		}
+		branches := append([]ast.ElseIfBranch{{
+			Condition:   n.Condition,
+			Consequence: n.Consequence,
+		}}, n.ElseIfs...)
+		var falseJumps []int
+		var endJumps []int
 
-		// 2. Emit OpJumpIfFalse with a placeholder operand (9999)
-		jumpIfFalsePos := c.emit(bytecode.OpJumpIfFalse, 9999)
-
-		// 3. Compile the consequence block
-		for _, stmt := range n.Consequence {
-			if err := c.Compile(stmt); err != nil {
+		for i, branch := range branches {
+			if i > 0 {
+				c.changeOperand(falseJumps[len(falseJumps)-1], len(c.chunk.Code))
+			}
+			if err := c.Compile(branch.Condition); err != nil {
 				return err
 			}
-		}
+			falseJumps = append(falseJumps, c.emit(bytecode.OpJumpIfFalse, 9999))
 
-		if len(n.Alternative) > 0 {
-			// Emit OpJump to skip the alternative block after consequence runs
-			jumpPos := c.emit(bytecode.OpJump, 9999)
-
-			// Current position is where the alternative block starts
-			alternativePos := len(c.chunk.Code)
-			c.changeOperand(jumpIfFalsePos, alternativePos)
-
-			// Compile alternative block
-			for _, stmt := range n.Alternative {
+			for _, stmt := range branch.Consequence {
 				if err := c.Compile(stmt); err != nil {
 					return err
 				}
 			}
+			if len(branches) > 1 || len(n.Alternative) > 0 {
+				endJumps = append(endJumps, c.emit(bytecode.OpJump, 9999))
+			}
+		}
 
-			// Patch the jumpPos to point to the end
-			endPos := len(c.chunk.Code)
-			c.changeOperand(jumpPos, endPos)
+		if len(falseJumps) > 0 {
+			c.changeOperand(falseJumps[len(falseJumps)-1], len(c.chunk.Code))
+		}
+		for _, stmt := range n.Alternative {
+			if err := c.Compile(stmt); err != nil {
+				return err
+			}
+		}
+		endPos := len(c.chunk.Code)
+		for _, jump := range endJumps {
+			c.changeOperand(jump, endPos)
+		}
+
+	case *ast.SelectStatement:
+		if err := c.Compile(n.Value); err != nil {
+			return err
+		}
+		var selector Symbol
+		if c.inFunction {
+			selector = Symbol{Scope: LocalScope, Index: c.localVarCount}
+			c.localVarCount++
+			c.chunk.WriteOpcode(bytecode.OpStoreLocal)
 		} else {
-			// No alternative block; patch jumpIfFalsePos to jump straight to the end
-			endPos := len(c.chunk.Code)
-			c.changeOperand(jumpIfFalsePos, endPos)
+			selector = Symbol{Scope: GlobalScope, Index: c.globalVarCount}
+			c.globalVarCount++
+			c.chunk.WriteOpcode(bytecode.OpStoreVar)
+		}
+		c.chunk.WriteByte(selector.Index)
+
+		var failedCaseJumps []int
+		var endJumps []int
+		for _, clause := range n.Cases {
+			if len(failedCaseJumps) > 0 {
+				c.changeOperand(failedCaseJumps[len(failedCaseJumps)-1], len(c.chunk.Code))
+			}
+			for i, caseValue := range clause.Values {
+				if selector.Scope == GlobalScope {
+					c.chunk.WriteOpcode(bytecode.OpLoadVar)
+				} else {
+					c.chunk.WriteOpcode(bytecode.OpLoadLocal)
+				}
+				c.chunk.WriteByte(selector.Index)
+				if err := c.Compile(caseValue); err != nil {
+					return err
+				}
+				c.chunk.WriteOpcode(bytecode.OpEq)
+				if i > 0 {
+					c.chunk.WriteOpcode(bytecode.OpOr)
+				}
+			}
+			failedCaseJumps = append(failedCaseJumps, c.emit(bytecode.OpJumpIfFalse, 9999))
+			for _, stmt := range clause.Body {
+				if err := c.Compile(stmt); err != nil {
+					return err
+				}
+			}
+			endJumps = append(endJumps, c.emit(bytecode.OpJump, 9999))
+		}
+
+		if len(failedCaseJumps) > 0 {
+			c.changeOperand(failedCaseJumps[len(failedCaseJumps)-1], len(c.chunk.Code))
+		}
+		for _, stmt := range n.Alternative {
+			if err := c.Compile(stmt); err != nil {
+				return err
+			}
+		}
+		endPos := len(c.chunk.Code)
+		for _, jump := range endJumps {
+			c.changeOperand(jump, endPos)
 		}
 
 	case *ast.IndexExpression:
@@ -451,11 +510,15 @@ func (c *Compiler) Compile(node ast.Node) error {
 
 		// Emit operator instruction
 		switch n.Operator {
+		case "And":
+			c.chunk.WriteOpcode(bytecode.OpAnd)
+		case "Or":
+			c.chunk.WriteOpcode(bytecode.OpOr)
 		case "+":
 			c.chunk.WriteOpcode(bytecode.OpAdd)
 		case "/":
 			c.chunk.WriteOpcode(bytecode.OpDiv)
-		case "==":
+		case "==", "=":
 			c.chunk.WriteOpcode(bytecode.OpEq)
 		case ">":
 			c.chunk.WriteOpcode(bytecode.OpGt)

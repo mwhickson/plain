@@ -54,11 +54,9 @@ Function Main() As Numeric
     If List.Len(data) > 0 Then
         Console.PrintLine("-----")
         For i As Numeric = 1 To List.Len(data)
-            'FIX: Print() is adding NewLine (same as PrintLine())
-            'Console.Print(PadString(data[i].Label, maximumLabelLength, " "))
-            'Console.Print(" | ")
-            'Console.PrintLine(MakeBar("*", data[i].Value))
-            Console.PrintLine(PadString(data[i].Label, maximumLabelLength, " ") + " | " + MakeBar("*", data[i].Value))
+            Console.Print(PadString(data[i].Label, maximumLabelLength, " "))
+            Console.Print(" | ")
+            Console.PrintLine(MakeBar("*", data[i].Value))
         End For
         Console.PrintLine("-----")
     Else

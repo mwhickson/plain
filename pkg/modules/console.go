@@ -17,7 +17,7 @@ func GetConsoleModule() value.Value {
 				for _, arg := range args {
 					parts = append(parts, arg.String())
 				}
-				fmt.Println(strings.Join(parts, " "))
+				fmt.Print(strings.Join(parts, " "))
 				return value.NewNone(), nil
 			}),
 		},

@@ -11,6 +11,8 @@ import (
 const (
 	_ int = iota
 	LOWEST
+	LOGICALOR
+	LOGICALAND
 	EQUALS      // ==
 	LESSGREATER // > or <
 	SUM         // + or -
@@ -20,8 +22,10 @@ const (
 )
 
 var precedences = map[token.TokenType]int{
+	token.AND:      LOGICALAND,
 	token.EQ:       EQUALS,
 	token.NOTEQ:    EQUALS,
+	token.OR:       LOGICALOR,
 	token.LT:       LESSGREATER,
 	token.LTE:      LESSGREATER,
 	token.GT:       LESSGREATER,
@@ -48,6 +52,7 @@ type Parser struct {
 
 	prefixParseFns map[token.TokenType]prefixParseFn
 	infixParseFns  map[token.TokenType]infixParseFn
+	allowEquals    bool
 }
 
 func NewParser(l *Lexer) *Parser {
@@ -76,7 +81,8 @@ func NewParser(l *Lexer) *Parser {
 	// Register infix parse functions
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.ASTERISK, p.parseInfixExpression)
-	p.registerInfix(token.EQ, p.parseInfixExpression)
+	p.registerInfix(token.AND, p.parseInfixExpression)
+	p.registerInfix(token.ASSIGN, p.parseInfixExpression)
 	p.registerInfix(token.EQ, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
 	p.registerInfix(token.GTE, p.parseInfixExpression)
@@ -86,6 +92,7 @@ func NewParser(l *Lexer) *Parser {
 	p.registerInfix(token.LTE, p.parseInfixExpression)
 	p.registerInfix(token.MINUS, p.parseInfixExpression)
 	p.registerInfix(token.NOTEQ, p.parseInfixExpression)
+	p.registerInfix(token.OR, p.parseInfixExpression)
 	p.registerInfix(token.PERIOD, p.parsePropertyAccessExpression)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
 	p.registerInfix(token.SLASH, p.parseInfixExpression)
@@ -121,7 +128,8 @@ func (p *Parser) parseBlockStatement() []ast.Statement {
 	var statements []ast.Statement
 	p.nextToken() // Move past Then or Else
 
-	for p.curToken.Type != token.EOF && p.curToken.Type != token.ELSE && p.curToken.Type != token.END {
+	for p.curToken.Type != token.EOF && p.curToken.Type != token.ELSE &&
+		p.curToken.Type != token.ELSEIF && p.curToken.Type != token.CASE && p.curToken.Type != token.END {
 		stmt := p.parseStatement()
 		if stmt != nil {
 			statements = append(statements, stmt)
@@ -400,7 +408,7 @@ func (p *Parser) parseIfStatement() *ast.IfStatement {
 
 	// Parse the condition expression (e.g., total == 30)
 	p.nextToken()
-	stmt.Condition = p.parseExpression(LOWEST)
+	stmt.Condition = p.parseCondition()
 
 	if !p.expectPeek(token.THEN) {
 		return nil
@@ -409,7 +417,19 @@ func (p *Parser) parseIfStatement() *ast.IfStatement {
 	// Parse the consequence body until Else or End
 	stmt.Consequence = p.parseBlockStatement()
 
-	// Check for an optional Else block
+	for p.curToken.Type == token.ELSEIF {
+		p.nextToken()
+		condition := p.parseCondition()
+		if !p.expectPeek(token.THEN) {
+			return nil
+		}
+		consequence := p.parseBlockStatement()
+		stmt.ElseIfs = append(stmt.ElseIfs, ast.ElseIfBranch{
+			Condition:   condition,
+			Consequence: consequence,
+		})
+	}
+
 	if p.curToken.Type == token.ELSE {
 		stmt.Alternative = p.parseBlockStatement()
 	}
@@ -425,6 +445,69 @@ func (p *Parser) parseIfStatement() *ast.IfStatement {
 		return nil
 	}
 
+	return stmt
+}
+
+func (p *Parser) parseCondition() ast.Expression {
+	p.allowEquals = true
+	defer func() { p.allowEquals = false }()
+	return p.parseExpression(LOWEST)
+}
+
+func (p *Parser) parseSelectStatement() *ast.SelectStatement {
+	stmt := &ast.SelectStatement{Token: p.curToken}
+	if !p.expectPeek(token.CASE) {
+		return nil
+	}
+
+	p.nextToken()
+	stmt.Value = p.parseExpression(LOWEST)
+	if !p.peekTokenIs(token.CASE) {
+		p.peekError(token.CASE)
+		return nil
+	}
+
+	seenElse := false
+	for p.curToken.Type == token.CASE || p.peekTokenIs(token.CASE) {
+		if p.curToken.Type != token.CASE {
+			p.nextToken() // move to CASE
+		}
+		p.nextToken() // move past CASE
+
+		if p.curToken.Type == token.ELSE {
+			if seenElse {
+				p.errors = append(p.errors, "duplicate Case Else")
+				return nil
+			}
+			seenElse = true
+			stmt.Alternative = p.parseBlockStatement()
+			continue
+		}
+		if seenElse {
+			p.errors = append(p.errors, "Case clause cannot follow Case Else")
+			return nil
+		}
+
+		clause := ast.CaseClause{}
+		for {
+			clause.Values = append(clause.Values, p.parseExpression(LOWEST))
+			if !p.peekTokenIs(token.COMMA) {
+				break
+			}
+			p.nextToken()
+			p.nextToken()
+		}
+		clause.Body = p.parseBlockStatement()
+		stmt.Cases = append(stmt.Cases, clause)
+	}
+
+	if p.curToken.Type != token.END {
+		p.peekError(token.END)
+		return nil
+	}
+	if !p.expectPeek(token.SELECT) {
+		return nil
+	}
 	return stmt
 }
 
@@ -446,9 +529,15 @@ func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
 }
 
 func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+	operator := p.curToken.Literal
+	if p.curToken.Type == token.AND {
+		operator = "And"
+	} else if p.curToken.Type == token.OR {
+		operator = "Or"
+	}
 	expression := &ast.InfixExpression{
 		Token:    p.curToken,
-		Operator: p.curToken.Literal,
+		Operator: operator,
 		Left:     left,
 	}
 
@@ -517,6 +606,8 @@ func (p *Parser) parseStatement() ast.Statement {
 	switch p.curToken.Type {
 	case token.IF:
 		return p.parseIfStatement()
+	case token.SELECT:
+		return p.parseSelectStatement()
 	case token.FOR:
 		return p.parseForStatement()
 	case token.FUNCTION:
@@ -643,6 +734,9 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 
 // Helper methods
 func (p *Parser) peekPrecedence() int {
+	if p.allowEquals && p.peekToken.Type == token.ASSIGN {
+		return EQUALS
+	}
 	if p, ok := precedences[p.peekToken.Type]; ok {
 		return p
 	}
@@ -650,6 +744,9 @@ func (p *Parser) peekPrecedence() int {
 }
 
 func (p *Parser) curTokenPrecedence() int {
+	if p.allowEquals && p.curToken.Type == token.ASSIGN {
+		return EQUALS
+	}
 	if p, ok := precedences[p.curToken.Type]; ok {
 		return p
 	}

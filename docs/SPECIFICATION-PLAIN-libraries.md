@@ -29,7 +29,7 @@ Standard library modules are exposed as global `Struct` namespaces pre-registere
 * **Implemented Functions**:
   * `Cls()` — Clear the terminal screen and reset cursor position.
   * `Input(prompt)` — Print prompt text and read a line of string input from `stdin`.
-  * `Print(text)` — Output text to `stdout`.
+  * `Print(text)` — Output text to `stdout` without a newline.
   * `PrintLine(text)` — Output text followed by a newline to `stdout`.
 * **Planned Functions**:
   * `CursorTo(row, col)`

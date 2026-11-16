@@ -102,6 +102,10 @@ Else
 End If
 ```
 
+Conditions support `And` and `Or` (`And` binds more tightly than `Or`). A single
+`=` is also accepted as equality inside an `If` or `ElseIf` condition; `==`
+continues to work. Outside conditions, `=` remains the assignment operator.
+
 #### For Loops (Unified)
 PLAIN features a single `For` construct covering both numeric ranges and list iterations:
 
@@ -210,6 +214,9 @@ ListElements     = Expression { "," Expression } [ "," ] ;
 
 Identifier       = letter { letter | digit | "_" } ;
 ```
+
+Within `If` and `ElseIf` conditions, `=` may be used in place of `==` for
+equality. `And` has higher precedence than `Or`.
 
 ---
 

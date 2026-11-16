@@ -162,7 +162,13 @@ type IfStatement struct {
 	token.Token
 	Condition   Expression
 	Consequence []Statement
+	ElseIfs     []ElseIfBranch
 	Alternative []Statement
+}
+
+type ElseIfBranch struct {
+	Condition   Expression
+	Consequence []Statement
 }
 
 func (is *IfStatement) statementNode()       {}
@@ -173,6 +179,12 @@ func (is *IfStatement) String() string {
 	for _, s := range is.Consequence {
 		out += s.String()
 	}
+	for _, branch := range is.ElseIfs {
+		out += " ElseIf " + branch.Condition.String() + " Then "
+		for _, s := range branch.Consequence {
+			out += s.String()
+		}
+	}
 	if len(is.Alternative) > 0 {
 		out += " Else "
 		for _, s := range is.Alternative {
@@ -180,6 +192,48 @@ func (is *IfStatement) String() string {
 		}
 	}
 	out += " End If"
+	return out
+}
+
+//
+// SelectStatement
+//
+
+type SelectStatement struct {
+	token.Token
+	Value       Expression
+	Cases       []CaseClause
+	Alternative []Statement
+}
+
+type CaseClause struct {
+	Values []Expression
+	Body   []Statement
+}
+
+func (ss *SelectStatement) statementNode()       {}
+func (ss *SelectStatement) TokenLiteral() string { return ss.Literal }
+func (ss *SelectStatement) String() string {
+	var out string
+	out += "Select Case " + ss.Value.String()
+	for _, clause := range ss.Cases {
+		out += " Case "
+		values := []string{}
+		for _, val := range clause.Values {
+			values = append(values, val.String())
+		}
+		out += strings.Join(values, ", ")
+		for _, s := range clause.Body {
+			out += s.String()
+		}
+	}
+	if len(ss.Alternative) > 0 {
+		out += " Case Else"
+		for _, s := range ss.Alternative {
+			out += s.String()
+		}
+	}
+	out += " End Select"
 	return out
 }
 

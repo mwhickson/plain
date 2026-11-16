@@ -38,6 +38,8 @@ const (
 	OpStoreLocal
 	OpStoreVar
 	OpSub
+	OpAnd
+	OpOr
 
 	// System / Execution
 	OpHalt Opcode = 0xFF
@@ -48,8 +50,12 @@ func (o Opcode) String() string {
 	switch o {
 	case OpNop:
 		return "OP_NOP"
+	case OpOr:
+		return "OP_OR"
 	case OpAdd:
 		return "OP_ADD"
+	case OpAnd:
+		return "OP_AND"
 	case OpBuildList:
 		return "OP_BUILD_LIST"
 	case OpBuildStruct:

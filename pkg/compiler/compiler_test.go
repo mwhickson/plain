@@ -146,6 +146,93 @@ func TestCompilerIfElseStatement(t *testing.T) {
 	// Verify that the result was assigned to a VM global.
 }
 
+func TestCompilerElseIfCompoundConditionsAndSelectCase(t *testing.T) {
+	input := `
+	Var a As Numeric = 1
+	Var b As Numeric = 2
+	Var result As Numeric = 0
+
+	If a = 1 and b = 0 Then
+		result = 10
+	ElseIf a = 1 AND b = 2 or a = 0 Then
+		result = 20
+	Else
+		result = 30
+	End If
+
+	Select Case result
+	Case 10, 20
+		result = 50
+	Case 30
+		result = 50
+	Case Else
+		result = 70
+	End Select
+
+	Select Case 99
+	Case 1
+		result = 80
+	Case Else
+		result = result + 10
+	End Select
+	`
+
+	p := parser.NewParser(parser.NewLexer(input))
+	program := p.ParseProgram()
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+	machine := vm.NewVM(comp.Bytecode())
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+
+	result, exists := userGlobal(machine, 2)
+	if !exists || result.Type != value.ValNumeric || result.Num != 60 {
+		t.Fatalf("result = %v, want 60", result)
+	}
+}
+
+func TestCompilerSelectCaseInsideFunction(t *testing.T) {
+	input := `
+	Function Choose(value As Numeric) As Numeric
+		Select Case value
+		Case 1
+			Return 10
+		Case Else
+			Return 20
+		End Select
+	End Function
+
+	Const result As Numeric = Choose(1)
+	`
+
+	p := parser.NewParser(parser.NewLexer(input))
+	program := p.ParseProgram()
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+	machine := vm.NewVM(comp.Bytecode())
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+
+	result, exists := userGlobal(machine, 1)
+	if !exists || result.Type != value.ValNumeric || result.Num != 10 {
+		t.Fatalf("result = %v, want 10", result)
+	}
+}
+
 func TestCompilerRangeLoop(t *testing.T) {
 	input := `
 	Var sum As Numeric = 0

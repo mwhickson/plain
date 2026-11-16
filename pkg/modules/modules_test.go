@@ -1,6 +1,7 @@
 package modules
 
 import (
+	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -8,6 +9,36 @@ import (
 	"reflect"
 	"testing"
 )
+
+func TestConsolePrintDoesNotAddNewline(t *testing.T) {
+	oldStdout := os.Stdout
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = writer
+	defer func() {
+		os.Stdout = oldStdout
+		writer.Close()
+		reader.Close()
+	}()
+
+	module := GetConsoleModule()
+	callModule(t, module, "Print", value.NewString("hello"))
+	callModule(t, module, "PrintLine", value.NewString("world"))
+
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = oldStdout
+	output, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := string(output), "helloworld\n"; got != want {
+		t.Fatalf("console output = %q, want %q", got, want)
+	}
+}
 
 func callModule(t *testing.T, module value.Value, name string, args ...value.Value) value.Value {
 	t.Helper()

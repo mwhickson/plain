@@ -175,6 +175,24 @@ func (vm *VM) runLoop() error {
 				return fmt.Errorf("type error: '+' expects numeric or string operands, got %s and %s", a.Type, b.Type)
 			}
 
+		case bytecode.OpAnd, bytecode.OpOr:
+			b, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			a, err := vm.Pop()
+			if err != nil {
+				return err
+			}
+			if a.Type != value.ValBoolean || b.Type != value.ValBoolean {
+				return fmt.Errorf("type error: logical operators expect Boolean operands, got %s and %s", a.Type, b.Type)
+			}
+			if op == bytecode.OpAnd {
+				vm.Push(value.NewBoolean(a.Bool && b.Bool))
+			} else {
+				vm.Push(value.NewBoolean(a.Bool || b.Bool))
+			}
+
 		case bytecode.OpBuildList:
 			numElements := int(vm.chunk.Code[vm.ip])
 			vm.ip++
