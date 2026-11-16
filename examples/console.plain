@@ -1,0 +1,137 @@
+'
+' console.plain
+' 2026-11-14 : Matthew Hickson
+'
+
+Const ERROR_NO_ERRORS_SUCCESS As Numeric = 0
+
+Const MAX_DATA_VALUE As Numeric = 10
+Const MAX_LABEL_LENGTH As Numeric = 25
+Const MAX_LOOPS As Numeric = 10
+
+System.SetErrorHandler(MyErrorHandler)
+Const Result As Numeric = Main()
+System.Exit(Result)
+
+'----------
+
+Function Main() As Numeric
+    Console.Cls()
+    Console.PrintLine("PLAIN Console Demo")
+    Console.PrintLine("------------------")
+    Console.PrintLine()
+
+    Console.PrintLine("Let's make a histogram!")
+    Console.PrintLine()
+    Console.PrintLine("Enter your data, one line at a time.")
+    Console.PrintLine("- Labels can be up to " + MAX_LABEL_LENGTH + "characters long")
+    Console.PrintLine("- Data can be a value up to " + MAX_DATA_VALUE)
+    Console.PrintLine("Enter an empty line to quit")
+    Console.PrintLine()
+
+    Var data As List 'Of DataItem
+    Var maximumLabelLength As Numeric = 0
+
+    Var line As String = ""
+    For i As Numeric = 1 To MAX_LOOPS
+        line = Console.Input("Data as 'Label,Value' (e.g. 'Apples,10'): ")
+
+        If String.Trim(line) == "" Then
+            i = MAX_LOOPS
+        Else
+            Var item As DataItem = CreateDataItem(line)
+            If IsValidDataItem(item) Then
+                If String.Len(item.Label) > maximumLabelLength Then
+                    maximumLabelLength = String.Len(item.Label)
+                End If
+                data = List.Append(data, item)
+            Else
+                Console.PrintLine("ERROR: Invalid item! Cannot add to data.")
+            End If
+        End If
+    End For
+
+    If List.Len(data) > 0 Then
+        Console.PrintLine("-----")
+        For i As Numeric = 1 To List.Len(data)
+            'FIX: Print() is adding NewLine (same as PrintLine())
+            'Console.Print(PadString(data[i].Label, maximumLabelLength, " "))
+            'Console.Print(" | ")
+            'Console.PrintLine(MakeBar("*", data[i].Value))
+            Console.PrintLine(PadString(data[i].Label, maximumLabelLength, " ") + " | " + MakeBar("*", data[i].Value))
+        End For
+        Console.PrintLine("-----")
+    Else
+        Console.PrintLine("No items to plot.")
+    End If
+
+	' exit cleanly
+	Return ERROR_NO_ERRORS_SUCCESS
+End Function
+
+Function MyErrorHandler(errMsg As String)
+    Console.Print("Caught runtime error: " + errMsg)
+End Function
+
+'----------
+
+Struct DataItem
+    Label As String
+    Value As Numeric
+End Struct
+
+Function CreateDataItem(itemString As String) As DataItem
+    Var i As DataItem
+    If String.Trim(itemString) != "" Then
+        Const kv As List = String.Split(itemString, ",")
+        If List.Len(kv) == 2 Then
+            i.Label = String.Trim(kv[1])
+            i.Value = String.ToNumeric(kv[2])
+        End If
+    End If
+    Return i
+End Function
+
+Function IsValidDataItem(item As DataItem) As Boolean
+    If String.Trim(item.Label) != "" Then
+        If item.Value >= 0 Then
+            If item.Value <= MAX_DATA_VALUE Then
+                Return True
+            End If
+        End If
+    End If
+
+    ' Fall through (invalid DataItem)
+    Return False
+End Function
+
+Function MakeBar(barChar As String, l As Numeric) As String
+    Var bar As String = ""
+    If String.Len(barChar) > 0 Then
+        If l > 0 Then
+            For i As Numeric = 1 To l
+                bar = bar + barChar
+            End For
+        End If
+    End If
+    Return bar
+End Function
+
+Function PadString(s As String, l As Numeric, padder As String) As String
+    Var padded As String
+    If String.Len(s) < l Then
+        If String.Len(padder) > 0 Then
+            Var padCount As Numeric = (l - String.Len(s)) / String.Len(padder)
+            Var padding As String = ""
+            For i As Numeric = 1 To padCount
+                padding = padding + padder
+            End For
+            padded = s + padding
+        Else
+            padded = s
+        End If
+    Else
+        padded = String.Left(s, l)
+    End If
+    Return padded
+End Function

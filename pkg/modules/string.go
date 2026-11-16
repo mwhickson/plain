@@ -4,23 +4,25 @@ import (
 	"fmt"
 	"math"
 	"plain/pkg/value"
+	"strconv"
 	"strings"
 )
 
 func GetStringModule() value.Value {
 	stringModule := map[string]value.Value{
-		"Len":     value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringLen)},
-		"Lower":   value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringLower)},
-		"Upper":   value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringUpper)},
-		"Left":    value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringLeft)},
-		"Right":   value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringRight)},
-		"Mid":     value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringMid)},
-		"Split":   value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringSplit)},
-		"Join":    value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringJoin)},
-		"Replace": value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringReplace)},
-		"Chr":     value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringChr)},
-		"Trim":    value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringTrim)},
-	}
+		"Len":         value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringLen)},
+		"Lower":       value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringLower)},
+		"Upper":       value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringUpper)},
+		"Left":        value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringLeft)},
+		"Right":       value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringRight)},
+		"Mid":         value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringMid)},
+		"Split":       value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringSplit)},
+		"Join":        value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringJoin)},
+		"Replace":     value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringReplace)},
+		"Chr":         value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringChr)},
+		"Trim":        value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringTrim)},
+		"ToNumeric":   value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringToNumeric)},
+		"FromNumeric": value.Value{Type: value.ValBuiltin, Obj: value.BuiltinFunction(stringFromNumeric)}}
 	return value.Value{
 		Type: value.ValStruct,
 		Obj:  stringModule,
@@ -179,4 +181,23 @@ func stringTrim(args []value.Value) (value.Value, error) {
 		return value.NewNone(), fmt.Errorf("String.Trim() requires 1 String argument")
 	}
 	return value.NewString(strings.TrimSpace(args[0].Str)), nil
+}
+
+func stringToNumeric(args []value.Value) (value.Value, error) {
+	if len(args) != 1 || args[0].Type != value.ValString {
+		return value.NewNone(), fmt.Errorf("String.ToNumeric() requires 1 String argument")
+	}
+	f, err := strconv.ParseFloat(strings.TrimSpace(args[0].Str), 64)
+	if err != nil {
+		return value.NewNumeric(0), nil
+	}
+	return value.NewNumeric(f), nil
+}
+
+func stringFromNumeric(args []value.Value) (value.Value, error) {
+	if len(args) != 1 || args[0].Type != value.ValNumeric {
+		return value.NewNone(), fmt.Errorf("String.FromNumeric() requires 1 Numeric argument")
+	}
+	s := strconv.FormatFloat(args[0].Num, 'f', -1, 64)
+	return value.NewString(s), nil
 }
