@@ -18,9 +18,10 @@
   "For"
   "To"
   "Step"
-  "In"
+  "While"
   "Return"
   "End"
+  "Break"
 ] @keyword.control
 
 [
@@ -31,6 +32,11 @@
   "As"
 ] @keyword.storage
 
+[
+  "And"
+  "Or"
+] @keyword.operator
+
 ; --- Types ---
 [
   "Numeric"
@@ -38,6 +44,7 @@
   "Boolean"
   "List"
   "Struct"
+  "Function"
 ] @type
 
 ; --- Standard Library Modules ---
@@ -52,6 +59,7 @@
   "File"
   "Time"
   "Decimal"
+  "Environment"
 ] @support.class
 
 ; --- Identifiers & Functions ---
