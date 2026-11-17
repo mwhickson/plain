@@ -7,7 +7,6 @@ Const ERROR_NO_ERRORS_SUCCESS As Numeric = 0
 
 Const MAX_DATA_VALUE As Numeric = 10
 Const MAX_LABEL_LENGTH As Numeric = 25
-Const MAX_LOOPS As Numeric = 10
 
 System.SetErrorHandler(MyErrorHandler)
 Const Result As Numeric = Main()
@@ -32,12 +31,12 @@ Function Main() As Numeric
     Var data As List 'Of DataItem
     Var maximumLabelLength As Numeric = 0
 
-    Var line As String = ""
-    For i As Numeric = 1 To MAX_LOOPS
+    Var line As String
+    While True
         line = Console.Input("Data as 'Label,Value' (e.g. 'Apples,10'): ")
 
         If String.Trim(line) == "" Then
-            i = MAX_LOOPS
+            Break
         Else
             Var item As DataItem = CreateDataItem(line)
             If IsValidDataItem(item) Then
@@ -49,7 +48,7 @@ Function Main() As Numeric
                 Console.PrintLine("ERROR: Invalid item! Cannot add to data.")
             End If
         End If
-    End For
+    End While
 
     If List.Len(data) > 0 Then
         Console.PrintLine("-----")
@@ -92,10 +91,8 @@ End Function
 
 Function IsValidDataItem(item As DataItem) As Boolean
     If String.Trim(item.Label) != "" Then
-        If item.Value >= 0 Then
-            If item.Value <= MAX_DATA_VALUE Then
-                Return True
-            End If
+        If item.Value >= 0 And item.Value <= MAX_DATA_VALUE Then
+            Return True
         End If
     End If
 
@@ -105,12 +102,10 @@ End Function
 
 Function MakeBar(barChar As String, l As Numeric) As String
     Var bar As String = ""
-    If String.Len(barChar) > 0 Then
-        If l > 0 Then
-            For i As Numeric = 1 To l
-                bar = bar + barChar
-            End For
-        End If
+    If String.Len(barChar) > 0 And l > 0 Then
+        For i As Numeric = 1 To l
+            bar = bar + barChar
+        End For
     End If
     Return bar
 End Function

@@ -7,8 +7,6 @@ Const ERROR_NO_ERRORS_SUCCESS As Numeric = 0
 
 Const DATA_PATH As String = Environment.GetScriptDir() + "/data/lined/"
 
-Const MORE_THAN_YOU_SHOULD_EVER_NEED As Numeric = 10000
-
 Const LinedTitle As String = "Lined v0.01 - Brutal line editing for a brutal time?"
 Const LinedCommandMenu As String = "N)ew File | V)iew File | S)ave File | L)oad File | D)elete Line | E)dit Line | H)elp | Q)uit :"
 Const LinedCommandTrigger As String = ":"
@@ -31,8 +29,8 @@ Function Main() As Numeric
     Console.PrintLine(LinedCommandMenu)
 
     Var command As String
-    Var line As String
-    For i As Numeric = 1 To MORE_THAN_YOU_SHOULD_EVER_NEED
+    Var line As String = "START"
+    While True
         line = Console.Input("")
         If String.Len(line) > 0 Then
             If String.Left(line, 1) == LinedCommandTrigger Then
@@ -76,12 +74,8 @@ Function Main() As Numeric
                             'Brutal!
                             Console.PrintLine("There is no help.")
                         Case "Q"
-                            i = MORE_THAN_YOU_SHOULD_EVER_NEED
+                            Break
                     End Select
-
-                    If command != "Q" Then
-                        i = 1 'reset to keep our loop infinite
-                    End If
                 End If
             Else
                 'Add line
@@ -91,7 +85,7 @@ Function Main() As Numeric
             'Add a blank line
             lines = List.Append(lines, "")
         End If
-    End For
+    End While
 
 	' exit cleanly
 	Return ERROR_NO_ERRORS_SUCCESS

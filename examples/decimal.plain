@@ -5,8 +5,6 @@
 
 Const ERROR_NO_ERRORS_SUCCESS As Numeric = 0
 
-Const MORE_THAN_YOU_SHOULD_EVER_NEED As Numeric = 10000
-
 System.SetErrorHandler(MyErrorHandler)
 Const Result As Numeric = Main()
 System.Exit(Result)
@@ -25,11 +23,11 @@ Function Main() As Numeric
     Var celsius As Numeric = 0
     Var fahrenheit As Numeric = 0
     Var ConversionRequested As String
-    For i As Numeric = 1 To MORE_THAN_YOU_SHOULD_EVER_NEED
+    While True
         ConversionRequested = Console.Input("Convert to (C)elsius or (F)ahrenheit? ")
         Select Case String.Upper(String.Left(String.Trim(ConversionRequested), 1))
         Case ""
-            i = MORE_THAN_YOU_SHOULD_EVER_NEED
+            Break
         Case "C"
             celsius = Console.Input("Enter Celsius: ")
             fahrenheit = Decimal.Format(ConvertCelsiusToFahrenheit(String.ToNumeric(celsius)), 1)
@@ -41,7 +39,7 @@ Function Main() As Numeric
         Case Else
             Console.PrintLine("I don't know what you want.")
         End Select
-    End For
+    End While
 
     Console.PrintLine()
     Console.PrintLine("Done.")
