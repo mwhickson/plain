@@ -248,7 +248,7 @@ func (p *Parser) parseForStatement() *ast.ForStatement {
 	}
 
 	// Parse loop body statements until End
-	stmt.Body = p.parseForBlockStatement()
+	stmt.Body = p.parseLoopBlockStatement()
 
 	if p.curToken.Type != token.END {
 		p.peekError(token.END)
@@ -262,9 +262,9 @@ func (p *Parser) parseForStatement() *ast.ForStatement {
 	return stmt
 }
 
-func (p *Parser) parseForBlockStatement() []ast.Statement {
+func (p *Parser) parseLoopBlockStatement() []ast.Statement {
 	var statements []ast.Statement
-	p.nextToken() // Move past To/Step expression end or newline
+	p.nextToken() // Move from the loop header to its body.
 
 	for p.curToken.Type != token.EOF && p.curToken.Type != token.END {
 		stmt := p.parseStatement()
@@ -275,6 +275,22 @@ func (p *Parser) parseForBlockStatement() []ast.Statement {
 	}
 
 	return statements
+}
+
+func (p *Parser) parseWhileStatement() *ast.WhileStatement {
+	stmt := &ast.WhileStatement{Token: p.curToken}
+	p.nextToken()
+	stmt.Condition = p.parseCondition()
+	stmt.Body = p.parseLoopBlockStatement()
+
+	if p.curToken.Type != token.END {
+		p.peekError(token.END)
+		return nil
+	}
+	if !p.expectPeek(token.WHILE) {
+		return nil
+	}
+	return stmt
 }
 
 func (p *Parser) parseFunctionStatement() *ast.FunctionStatement {
@@ -610,6 +626,10 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseSelectStatement()
 	case token.FOR:
 		return p.parseForStatement()
+	case token.WHILE:
+		return p.parseWhileStatement()
+	case token.BREAK:
+		return &ast.BreakStatement{Token: p.curToken}
 	case token.FUNCTION:
 		return p.parseFunctionStatement()
 	case token.RETURN:

@@ -17,6 +17,11 @@ type Compiler struct {
 	globalVarCount byte
 	localVarCount  byte
 	inFunction     bool
+	loopContexts   []loopContext
+}
+
+type loopContext struct {
+	breakJumps []int
 }
 
 func New() *Compiler {
@@ -214,12 +219,11 @@ func (c *Compiler) Compile(node ast.Node) error {
 		// Emit JumpIfFalse to exit the loop
 		exitJumpPos := c.emit(bytecode.OpJumpIfFalse, 9999)
 
-		// 5. Compile loop body statements
-		for _, stmt := range n.Body {
-			if err := c.Compile(stmt); err != nil {
-				c.symbolTable = c.symbolTable.Parent
-				return err
-			}
+		// 5. Compile the loop body and collect jumps emitted by Break statements.
+		breakJumps, err := c.compileLoopBody(n.Body)
+		if err != nil {
+			c.symbolTable = c.symbolTable.Parent
+			return err
 		}
 
 		// 6. Increment loop variable: i = i + step
@@ -252,9 +256,45 @@ func (c *Compiler) Compile(node ast.Node) error {
 		// Patch exit jump target
 		endLoopIndex := len(c.chunk.Code)
 		c.changeOperand(exitJumpPos, endLoopIndex)
+		for _, jumpPos := range breakJumps {
+			c.changeOperand(jumpPos, endLoopIndex)
+		}
 
 		// 8. Exit loop block scope
 		c.symbolTable = c.symbolTable.Parent
+
+	case *ast.WhileStatement:
+		oldSymbolTable := c.symbolTable
+		c.symbolTable = NewEnclosedSymbolTable(oldSymbolTable)
+
+		loopStartIndex := len(c.chunk.Code)
+		if err := c.Compile(n.Condition); err != nil {
+			c.symbolTable = oldSymbolTable
+			return err
+		}
+		exitJumpPos := c.emit(bytecode.OpJumpIfFalse, 9999)
+
+		breakJumps, err := c.compileLoopBody(n.Body)
+		if err != nil {
+			c.symbolTable = oldSymbolTable
+			return err
+		}
+		c.emit(bytecode.OpJump, loopStartIndex)
+
+		endLoopIndex := len(c.chunk.Code)
+		c.changeOperand(exitJumpPos, endLoopIndex)
+		for _, jumpPos := range breakJumps {
+			c.changeOperand(jumpPos, endLoopIndex)
+		}
+		c.symbolTable = oldSymbolTable
+
+	case *ast.BreakStatement:
+		if len(c.loopContexts) == 0 {
+			return fmt.Errorf("Break used outside a loop")
+		}
+		jumpPos := c.emit(bytecode.OpJump, 9999)
+		lastContext := len(c.loopContexts) - 1
+		c.loopContexts[lastContext].breakJumps = append(c.loopContexts[lastContext].breakJumps, jumpPos)
 
 	case *ast.FunctionStatement:
 		// 1. Pre-register function name in the current symbol table so it can reference itself recursively
@@ -286,6 +326,8 @@ func (c *Compiler) Compile(node ast.Node) error {
 
 		oldLocalVarCount := c.localVarCount
 		c.localVarCount = 0 // Function frames start local indices at 0
+		oldLoopContexts := c.loopContexts
+		c.loopContexts = nil
 
 		// Define receiver in the function's symbol table if present
 		if n.Receiver != nil {
@@ -305,6 +347,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 				c.symbolTable = oldSymbolTable
 				c.inFunction = oldInFunction
 				c.localVarCount = oldLocalVarCount
+				c.loopContexts = oldLoopContexts
 				return err
 			}
 		}
@@ -323,6 +366,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.symbolTable = oldSymbolTable
 		c.inFunction = oldInFunction
 		c.localVarCount = oldLocalVarCount
+		c.loopContexts = oldLoopContexts
 
 		// Patch skip jump & store function object...
 		endFuncIndex := len(c.chunk.Code)
@@ -734,6 +778,20 @@ func (c *Compiler) changeOperand(opPos int, operand int) {
 	// The operand starts immediately after the opcode
 	c.chunk.Code[opPos+1] = byte(operand & 0xff)
 	c.chunk.Code[opPos+2] = byte((operand >> 8) & 0xff)
+}
+
+func (c *Compiler) compileLoopBody(body []ast.Statement) ([]int, error) {
+	contextIndex := len(c.loopContexts)
+	c.loopContexts = append(c.loopContexts, loopContext{})
+	for _, stmt := range body {
+		if err := c.Compile(stmt); err != nil {
+			c.loopContexts = c.loopContexts[:contextIndex]
+			return nil, err
+		}
+	}
+	breakJumps := append([]int(nil), c.loopContexts[contextIndex].breakJumps...)
+	c.loopContexts = c.loopContexts[:contextIndex]
+	return breakJumps, nil
 }
 
 func (c *Compiler) emit(op bytecode.Opcode, operand int) int {

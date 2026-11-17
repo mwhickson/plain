@@ -122,6 +122,23 @@ For item In items
 End For
 ```
 
+#### While Loops
+Use `While` when the number of iterations depends on a condition evaluated at
+the start of each iteration:
+
+```plain
+Var count As Numeric = 0
+While count < 10
+    count = count + 1
+    If count == 5 Then
+        Break
+    End If
+End While
+```
+
+`Break` immediately exits the innermost active `For` or `While` loop. Using
+`Break` outside a loop is a compile-time error.
+
 #### Select Case Statements
 Multi-branch condition matching uses structured `Select Case` blocks:
 
@@ -151,6 +168,8 @@ Statement        = VarDecl
                  | Assignment
                  | IfStmt
                  | ForStmt
+                 | WhileStmt
+                 | BreakStmt
                  | SelectStmt
                  | ReturnStmt
                  | ExpressionStmt ;
@@ -177,6 +196,8 @@ IfStmt           = "If" Expression "Then" { Statement }
 ForStmt          = "For" ( RangeLoop | IterLoop ) { Statement } "End" "For" ;
 RangeLoop        = Identifier "As" TypeName "=" Expression "To" Expression [ "Step" Expression ] ;
 IterLoop         = Identifier "In" Expression ;
+WhileStmt        = "While" Expression { Statement } "End" "While" ;
+BreakStmt        = "Break" ;
 
 SelectStmt       = "Select" "Case" Expression 
                    { CaseClause } 

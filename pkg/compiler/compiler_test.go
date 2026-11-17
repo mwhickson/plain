@@ -271,6 +271,145 @@ func TestCompilerRangeLoop(t *testing.T) {
 	}
 }
 
+func TestCompilerWhileAndBreakLoops(t *testing.T) {
+	input := `
+	Var count As Numeric = 0
+	Var whileTotal As Numeric = 0
+	While count < 10
+		count = count + 1
+		If count == 4 Then
+			Break
+		End If
+		whileTotal = whileTotal + count
+	End While
+
+	Var naturalCount As Numeric = 0
+	While naturalCount < 3
+		naturalCount = naturalCount + 1
+	End While
+
+	Var forTotal As Numeric = 0
+	For i As Numeric = 1 To 10
+		If i == 4 Then
+			Break
+		End If
+		forTotal = forTotal + i
+	End For
+
+	Var outerCount As Numeric = 0
+	Var innerCount As Numeric = 0
+	For outer As Numeric = 1 To 3
+		While True
+			innerCount = innerCount + 1
+			Break
+		End While
+		outerCount = outerCount + 1
+	End For
+	`
+
+	p := parser.NewParser(parser.NewLexer(input))
+	program := p.ParseProgram()
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+	machine := vm.NewVM(comp.Bytecode())
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+
+	checks := []struct {
+		offset byte
+		want   float64
+	}{
+		{0, 4},
+		{1, 6},
+		{2, 3},
+		{3, 6},
+		{4, 3},
+		{5, 3},
+	}
+	for _, check := range checks {
+		got, exists := userGlobal(machine, check.offset)
+		if !exists || got.Type != value.ValNumeric || got.Num != check.want {
+			t.Errorf("user global %d = %v, want %v", check.offset, got, check.want)
+		}
+	}
+}
+
+func TestCompilerBreakOutsideLoop(t *testing.T) {
+	p := parser.NewParser(parser.NewLexer("Break"))
+	program := p.ParseProgram()
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err == nil || err.Error() != "Break used outside a loop" {
+		t.Fatalf("compiler error = %v, want Break-outside-loop error", err)
+	}
+}
+
+func TestCompilerWhileAndBreakInsideFunction(t *testing.T) {
+	input := `
+	Function CountTo(limit As Numeric) As Numeric
+		Var count As Numeric = 0
+		While count < limit
+			count = count + 1
+			If count == 3 Then
+				Break
+			End If
+		End While
+		Return count
+	End Function
+
+	Const result As Numeric = CountTo(10)
+	`
+	p := parser.NewParser(parser.NewLexer(input))
+	program := p.ParseProgram()
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error: %v", err)
+	}
+	machine := vm.NewVM(comp.Bytecode())
+	if err := machine.Run(); err != nil {
+		t.Fatalf("vm execution error: %v", err)
+	}
+
+	result, exists := userGlobal(machine, 1)
+	if !exists || result.Type != value.ValNumeric || result.Num != 3 {
+		t.Fatalf("CountTo(10) = %v, want 3", result)
+	}
+}
+
+func TestCompilerBreakCannotEscapeFunctionFromLoop(t *testing.T) {
+	input := `
+	For i As Numeric = 1 To 1
+		Function InvalidBreak()
+			Break
+		End Function
+	End For
+	`
+	p := parser.NewParser(parser.NewLexer(input))
+	program := p.ParseProgram()
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err == nil || err.Error() != "Break used outside a loop" {
+		t.Fatalf("compiler error = %v, want Break-outside-loop error", err)
+	}
+}
+
 func TestCompilerFunctionCall(t *testing.T) {
 	input := `
 	Function Add(a As Numeric, b As Numeric) As Numeric

@@ -9,6 +9,7 @@ const (
 	AS       = "AS"
 	ASSIGN   = "="
 	ASTERISK = "*"
+	BREAK    = "BREAK"
 	CASE     = "CASE"
 	COMMA    = ","
 	CONST    = "CONST"
@@ -49,11 +50,13 @@ const (
 	TO       = "TO"
 	TRUE     = "TRUE"
 	VAR      = "VAR"
+	WHILE    = "WHILE"
 )
 
 var keywords = map[string]TokenType{
 	"and":      AND,
 	"as":       AS,
+	"break":    BREAK,
 	"case":     CASE,
 	"const":    CONST,
 	"else":     ELSE,
@@ -74,6 +77,7 @@ var keywords = map[string]TokenType{
 	"to":       TO,
 	"true":     TRUE,
 	"var":      VAR,
+	"while":    WHILE,
 }
 
 func LookupIdent(ident string) TokenType {

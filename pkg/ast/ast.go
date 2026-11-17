@@ -109,6 +109,40 @@ func (fs *ForStatement) String() string {
 }
 
 //
+// WhileStatement
+//
+
+type WhileStatement struct {
+	token.Token
+	Condition Expression
+	Body      []Statement
+}
+
+func (ws *WhileStatement) statementNode()       {}
+func (ws *WhileStatement) TokenLiteral() string { return ws.Literal }
+func (ws *WhileStatement) String() string {
+	var out string
+	out += "While " + ws.Condition.String()
+	for _, s := range ws.Body {
+		out += s.String()
+	}
+	out += " End While"
+	return out
+}
+
+//
+// BreakStatement
+//
+
+type BreakStatement struct {
+	token.Token
+}
+
+func (bs *BreakStatement) statementNode()       {}
+func (bs *BreakStatement) TokenLiteral() string { return bs.Literal }
+func (bs *BreakStatement) String() string       { return "Break" }
+
+//
 // FunctionStatement
 //
 
