@@ -2,6 +2,7 @@ package compiler_test
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"plain/pkg/compiler"
@@ -10,6 +11,7 @@ import (
 	"plain/pkg/value"
 	"plain/pkg/vm"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -1050,5 +1052,84 @@ func TestFileExampleCompiles(t *testing.T) {
 	comp := compiler.New()
 	if err := comp.Compile(program); err != nil {
 		t.Fatalf("compiler error in file example: %v", err)
+	}
+}
+
+func TestListExampleCompilesAndRunsToMenu(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join("..", "..", "examples", "list.plain"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p := parser.NewParser(parser.NewLexer(string(source)))
+	program := p.ParseProgram()
+	if len(p.Errors()) > 0 {
+		t.Fatalf("parser errors in list example: %v", p.Errors())
+	}
+
+	comp := compiler.New()
+	if err := comp.Compile(program); err != nil {
+		t.Fatalf("compiler error in list example: %v", err)
+	}
+	chunk := comp.Bytecode()
+	if count := len(chunk.Constants); count > 256 {
+		t.Fatalf("list example constant pool has %d values, exceeds bytecode index capacity", count)
+	}
+
+	scriptDir := t.TempDir()
+	dataDir := filepath.Join(scriptDir, "data", "tasks")
+	if err := os.MkdirAll(dataDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dataDir, "index.dat"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	modules.SetScriptPath(filepath.Join(scriptDir, "list.plain"))
+	t.Cleanup(func() { modules.SetScriptPath("") })
+
+	input, err := os.CreateTemp(t.TempDir(), "stdin-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := input.WriteString("Q\n"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := input.Seek(0, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	oldStdin, oldStdout := os.Stdin, os.Stdout
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		os.Stdin, os.Stdout = oldStdin, oldStdout
+		reader.Close()
+		writer.Close()
+		input.Close()
+	})
+	os.Stdin, os.Stdout = input, writer
+	machine := vm.NewVM(chunk)
+	runErr := machine.Run()
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	os.Stdin, os.Stdout = oldStdin, oldStdout
+
+	if runErr != nil {
+		t.Fatalf("list example VM error before menu exit: %v", runErr)
+	}
+	if code, exited := machine.ExitCode(); !exited || code != 0 {
+		t.Fatalf("list example exit status = (%d, %t), want (0, true)", code, exited)
+	}
+	output, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(output), "PLAIN List Demo") ||
+		!strings.Contains(string(output), "A)dd a Task") ||
+		!strings.Contains(string(output), "Enter your choice:") {
+		t.Fatalf("list example output did not reach menu: %q", output)
 	}
 }

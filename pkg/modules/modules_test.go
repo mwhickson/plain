@@ -94,6 +94,15 @@ func TestStringModuleUnicodeAndMidBounds(t *testing.T) {
 	if got := callModule(t, module, "Mid", input, value.NewNumeric(2), value.NewNumeric(-1)); got.Str != "" {
 		t.Fatalf("String.Mid() with negative length = %q, want empty string", got.Str)
 	}
+	if got := callModule(t, module, "ToNumeric", value.NewString(" 12.5 ")); got.Type != value.ValNumeric || got.Num != 12.5 {
+		t.Fatalf("String.ToNumeric() = %v, want 12.5", got)
+	}
+	if got := callModule(t, module, "ToNumeric", value.NewString("not numeric")); got.Type != value.ValNumeric || got.Num != 0 {
+		t.Fatalf("String.ToNumeric() for invalid input = %v, want 0", got)
+	}
+	if got := callModule(t, module, "FromNumeric", value.NewNumeric(-12.5)); got.Type != value.ValString || got.Str != "-12.5" {
+		t.Fatalf("String.FromNumeric() = %v, want -12.5", got)
+	}
 }
 
 func TestStructModuleKeysAreStable(t *testing.T) {

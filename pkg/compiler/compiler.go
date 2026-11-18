@@ -85,7 +85,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 			}
 			// 3. Add property name as constant
 			propNameVal := value.NewString(left.Property.Value)
-			constIdx := c.chunk.AddConstant(propNameVal)
+			constIdx, err := c.chunk.AddConstant(propNameVal)
+			if err != nil {
+				return err
+			}
 			c.chunk.WriteOpcode(bytecode.OpSetProperty)
 			c.chunk.WriteByte(constIdx)
 
@@ -95,7 +98,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 
 	case *ast.BooleanLiteral:
 		val := value.NewBoolean(n.Value)
-		constIdx := c.chunk.AddConstant(val)
+		constIdx, err := c.chunk.AddConstant(val)
+		if err != nil {
+			return err
+		}
 		c.chunk.WriteOpcode(bytecode.OpPushConst)
 		c.chunk.WriteByte(constIdx)
 
@@ -178,7 +184,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 			}
 		} else {
 			litVal := value.NewNumeric(1)
-			constIdx := c.chunk.AddConstant(litVal)
+			constIdx, err := c.chunk.AddConstant(litVal)
+			if err != nil {
+				return err
+			}
 			c.chunk.WriteOpcode(bytecode.OpPushConst)
 			c.chunk.WriteByte(constIdx)
 		}
@@ -353,7 +362,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 		}
 
 		// Ensure every function ends with a return (defaulting to None)
-		noneConstIdx := c.chunk.AddConstant(value.NewNone())
+		noneConstIdx, err := c.chunk.AddConstant(value.NewNone())
+		if err != nil {
+			return err
+		}
 		c.chunk.WriteOpcode(bytecode.OpPushConst)
 		c.chunk.WriteByte(noneConstIdx)
 		c.chunk.WriteOpcode(bytecode.OpReturn)
@@ -383,7 +395,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 			ParamCount:            len(n.Parameters),
 			LocalVarCount:         int(functionLocalVarCount),
 		}
-		constIdx := c.chunk.AddConstant(value.Value{Type: value.ValFunction, Obj: fnObj})
+		constIdx, err := c.chunk.AddConstant(value.Value{Type: value.ValFunction, Obj: fnObj})
+		if err != nil {
+			return err
+		}
 
 		if numFree > 0 {
 			// For each free symbol, emit instructions to load it from the enclosing scope
@@ -584,7 +599,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 
 	case *ast.IntegerLiteral:
 		literalVal := value.NewNumeric(n.Value)
-		constIdx := c.chunk.AddConstant(literalVal)
+		constIdx, err := c.chunk.AddConstant(literalVal)
+		if err != nil {
+			return err
+		}
 		c.chunk.WriteOpcode(bytecode.OpPushConst)
 		c.chunk.WriteByte(constIdx)
 
@@ -599,7 +617,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 
 	case *ast.NoneLiteral:
 		val := value.NewNone()
-		constIdx := c.chunk.AddConstant(val)
+		constIdx, err := c.chunk.AddConstant(val)
+		if err != nil {
+			return err
+		}
 		c.chunk.WriteOpcode(bytecode.OpPushConst)
 		c.chunk.WriteByte(constIdx)
 
@@ -672,7 +693,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 		}
 		// Add property name as a constant in the constant pool
 		propNameVal := value.NewString(n.Property.Value)
-		constIdx := c.chunk.AddConstant(propNameVal)
+		constIdx, err := c.chunk.AddConstant(propNameVal)
+		if err != nil {
+			return err
+		}
 		c.chunk.WriteOpcode(bytecode.OpGetProperty)
 		c.chunk.WriteByte(constIdx)
 
@@ -683,7 +707,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 			}
 		} else {
 			// Return None by default
-			noneConstIdx := c.chunk.AddConstant(value.NewNone())
+			noneConstIdx, err := c.chunk.AddConstant(value.NewNone())
+			if err != nil {
+				return err
+			}
 			c.chunk.WriteOpcode(bytecode.OpPushConst)
 			c.chunk.WriteByte(noneConstIdx)
 		}
@@ -691,7 +718,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 
 	case *ast.StringLiteral:
 		val := value.NewString(n.Value)
-		constIdx := c.chunk.AddConstant(val)
+		constIdx, err := c.chunk.AddConstant(val)
+		if err != nil {
+			return err
+		}
 		c.chunk.WriteOpcode(bytecode.OpPushConst)
 		c.chunk.WriteByte(constIdx)
 
@@ -713,11 +743,17 @@ func (c *Compiler) Compile(node ast.Node) error {
 				return err
 			}
 			if initial.Type == value.ValStruct {
-				constIdx := c.chunk.AddConstant(initial)
+				constIdx, err := c.chunk.AddConstant(initial)
+				if err != nil {
+					return err
+				}
 				c.chunk.WriteOpcode(bytecode.OpBuildStruct)
 				c.chunk.WriteByte(constIdx)
 			} else {
-				constIdx := c.chunk.AddConstant(initial)
+				constIdx, err := c.chunk.AddConstant(initial)
+				if err != nil {
+					return err
+				}
 				c.chunk.WriteOpcode(bytecode.OpPushConst)
 				c.chunk.WriteByte(constIdx)
 			}

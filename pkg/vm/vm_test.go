@@ -11,12 +11,18 @@ func TestVMAddOpcode(t *testing.T) {
 	chunk := bytecode.NewChunk()
 
 	// 1. Load Constant 10
-	idx1 := chunk.AddConstant(value.NewNumeric(10))
+	idx1, err := chunk.AddConstant(value.NewNumeric(10))
+	if err != nil {
+		t.Fatal(err)
+	}
 	chunk.WriteOpcode(bytecode.OpPushConst)
 	chunk.WriteByte(idx1)
 
 	// 2. Load Constant 20
-	idx2 := chunk.AddConstant(value.NewNumeric(20))
+	idx2, err := chunk.AddConstant(value.NewNumeric(20))
+	if err != nil {
+		t.Fatal(err)
+	}
 	chunk.WriteOpcode(bytecode.OpPushConst)
 	chunk.WriteByte(idx2)
 

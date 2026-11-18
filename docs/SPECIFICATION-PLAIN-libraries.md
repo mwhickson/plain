@@ -226,6 +226,8 @@ Standard library modules are exposed as global `Struct` namespaces pre-registere
   * `Mid(str, start [, length])` — Extract from a 1-based start position.
   * `Replace(str, target, replacement)` — Replace all occurrences.
   * `Split(str, delimiter)` — Split into a list of strings.
+  * `ToNumeric(str)` — Parse a string as a number; return `0` if it is not numeric.
+  * `FromNumeric(number)` — Convert a number to its decimal string representation.
 
 ### Struct *(Implemented — Global Slot 4)*
 

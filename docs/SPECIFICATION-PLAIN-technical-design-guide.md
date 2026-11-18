@@ -9,7 +9,7 @@
 
 PLAIN (Programming Language Allowing Implementation Neatly) is a statically-typed, BASIC-inspired programming language engineered around a clean, single-pass Abstract Syntax Tree (AST) compiler targeting a custom stack-based Virtual Machine in Go.
 
-The architecture prioritizes **transparency, low implementation overhead, and modular extensibility**. Rather than relying on complex foreign function interfaces (FFIs) or heavy runtime bytecode verifiers, PLAIN exposes native capabilities through pre-seeded standard-library `Struct` namespaces backed by Go callback functions (`ValBuiltin`).
+The architecture prioritizes **transparency, low implementation overhead, and modular extensibility**. Rather than relying on complex foreign function interfaces (FFIs) or heavy runtime bytecode verifiers, PLAIN exposes native capabilities through pre-seeded standard-library `Struct` namespaces backed by Go callback functions (`ValBuiltin`). Scalar values in a chunk's byte-indexed constant pool are deduplicated, with a compile-time error when the 256-entry capacity is exceeded.
 
 ```text
 [ Source Code (.plain) ]

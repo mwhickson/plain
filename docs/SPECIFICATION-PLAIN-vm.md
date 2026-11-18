@@ -63,7 +63,7 @@ PLAIN utilizes dynamic runtime value wrappers (`value.Value`) to store scalar pr
 ## 3. Bytecode Structure & Constants Pool
 
 A compiled PLAIN program chunk consists of two primary structures:
-1. **Constant Pool (`Constants`):** An indexed slice of static literal values (strings, numbers, function prototypes) referenced by 1-byte index.
+1. **Constant Pool (`Constants`):** An indexed slice of static literal values (strings, numbers, function prototypes) referenced by 1-byte index. Scalar constants are deduplicated; a chunk can contain at most 256 distinct constants, and compilation reports an error if that limit is exceeded.
 2. **Instruction Stream (`Code`):** A sequential byte slice containing 1-byte Opcodes followed by zero or more 1-byte or 2-byte (little-endian `uint16`) operands.
 
 ---
