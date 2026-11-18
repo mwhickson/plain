@@ -1,0 +1,342 @@
+'
+' list.plain
+' 2026-11-17 : Matthew Hickson
+'
+
+Const ERROR_NO_ERRORS_SUCCESS As Numeric = 0
+
+Const DATA_DIR As String = Environment.GetScriptDir() + "/data/tasks/"
+Const INDEX_FILE As String = "index.dat" 'having a File.DirectoryList() would go a long way to making this file unnecessary
+Const SCREEN_LENGTH As Numeric = 10
+'Const SCREEN_WIDTH As Numeric = 80 'FUTURE: Ignored
+Const EMPTY_TASK As Task = CreateTask("", "", 0, False)
+
+Var Global_Tasks As List = [] ' Of Task
+
+System.SetErrorHandler(MyErrorHandler)
+Const Result As Numeric = Main()
+System.Exit(Result)
+
+'----------
+
+Function Main() As Numeric
+    Console.Cls()
+    Console.PrintLine("PLAIN List Demo")
+    Console.PrintLine("------------------")
+    Console.PrintLine()
+
+    UpdateIndex(EMPTY_TASK, False) 'prime the pump
+
+    While True
+        DisplayMenu()
+        HandleMenuPrompt()
+    End While
+End Function
+
+Function MyErrorHandler(errMsg As String)
+    Console.Print("Caught runtime error: " + errMsg)
+End Function
+
+'----------
+
+Struct Task
+    Title As String 'short text (single line)
+    Description As String ' long text (single line)
+    Order As Numeric ' greater than zero
+    IsComplete As Boolean
+End Struct
+
+Function AddTask()
+    Var title As String = ""
+    Var description As String = ""
+    Var order As Numeric = 0
+    Var isComplete As Boolean = False
+
+    Var dummy As String = ""
+
+    Var orderText As String = String.Trim(Console.Input("Order (number, greater than 0) > "))
+    order = String.ToNumeric(orderText)
+
+    'FIX: user-friendly this up...
+    If order > 0 Then
+        title = String.Trim(Console.Input("Title > "))
+        If String.Len(title) > 0 Then
+            Var isCompleteText As String = String.Upper(String.Left(String.Trim(Console.Input("Is Complete (Y/[N]) > ")), 1))
+            If isCompleteText == "Y" Then
+                isComplete = True
+            End If
+
+            description = String.Trim(Console.Input("Description > ")) 'Allow an empty description
+
+            Const t As Task = CreateTask(title, description, order, isComplete)
+            SaveTask(t)
+            UpdateIndex(t, False)
+        Else
+            dummy = Console.Input("title cannot be empty, aborting.")
+        End If
+    Else
+        dummy = Console.Input("invalid order, aborting.")
+    End If
+End Function
+
+Function CreateTask(title As String, description As String, order As Numeric, isComplete As Boolean) As Task
+    Var t As Task
+    t.Title = title
+    t.Description = description
+    t.Order = order
+    t.IsComplete = isComplete
+    Return t
+End Function
+
+Function DeleteTask(t As Task)
+    If t.Order > 0 Then
+        Const taskToDelete As Numeric = t.Order
+        Const deletefile As String = DATA_DIR + String.FromNumeric(t.Order) + ".txt"
+        If File.Exists(deletefile) Then
+            'TODO: we need a File.Delete()... until then, I guess we're doing a soft delete (i.e. clobber the index entry; can still overwrite deleted task)
+        End If
+        UpdateIndex(t, True)
+    End If
+End Function
+
+Function DisplayMenu()
+    Console.Cls()
+    Console.PrintLine("Tasks")
+    Console.PrintLine("==========")
+    Console.PrintLine("A)dd a Task")
+    Console.PrintLine("L)ist Tasks")
+    Console.PrintLine("Q)uit")
+End Function
+
+Function DisplayTask(t As Task)
+    Console.Cls()
+    Console.PrintLine("Title: " + t.Title)
+    Console.PrintLine("Order: " + t.Order)
+    Console.Print("Complete: ")
+    If t.IsComplete Then
+        Console.PrintLine("Yes")
+    Else
+        Console.PrintLine("No")
+    End If
+    DisplayTaskMenu()
+    'Console.PrintLine(t.Description)
+    HandleTaskMenu(t)
+End Function
+
+Function DisplayTaskList(pageNumber As Numeric, sortOrder As String)
+    'TODO: paging + pageNumber + sortOrder
+    Console.PrintLine(TruncateAndPadText("Order", 10, " "), \
+        " | ", \
+        TruncateAndPadText("Title", 54, " "), \
+        " | ", \
+        TruncateAndPadText("Complete", 10, " "))
+    For i As Numeric = 1 To 80
+        Console.Print("-")
+    End For
+    Console.PrintLine()
+    Var completeText As String = "N"
+    For j As Numeric = 1 To List.Len(Global_Tasks)
+        If Global_Tasks[j].IsComplete Then
+            completeText = "Y"
+        End If
+        Console.PrintLine(TruncateAndPadText(Global_Tasks[j].Order, 10, " "), \
+            " | ", \
+            TruncateAndPadText(Global_Tasks[j].Title, 54, " "), \
+            " | ", \
+            TruncateAndPadText(completeText, 10, " "))
+    End For
+End Function
+
+Function DisplayTaskList()
+    Console.Cls()
+    DisplayTaskListMenu()
+    HandleTaskListMenu()
+End Function
+
+Function DisplayTaskListMenu()
+    Console.PrintLine("---")
+    Console.PrintLine("#) View Task Number # | B)ack | N)ext Page | P)revious Page | R)everse List Order")
+    Console.PrintLine("---")
+End Function
+
+Function DisplayTaskMenu()
+    Console.PrintLine("---")
+    Console.PrintLine("X) Complete || O)rder | R)e-Open | E)dit Description | T) Edit Title | D)elete")
+    Console.PrintLine("---")
+End Function
+
+Function HandleMenuPrompt()
+    Const Choice As String = String.Upper(String.Left(Console.Input("Enter your choice: "), 1))
+    Select Case Choice
+    Case "A"
+        AddTask()
+    Case "L"
+        DisplayTaskList()
+    Case "Q"
+        System.Exit(ERROR_NO_ERRORS_SUCCESS)
+    Case Else
+        'PASS: we could stop and tell the user they're an idiot, but let's just let them pick again...
+        'Const ThrowAway As String = Console.Input("Invalid choice.")
+    End Select
+End Function
+
+Function HandleTaskListMenu()
+    Const Choice As String = String.Upper(String.Left(Console.Input("Enter your choice: "), 1))
+    Select Case Choice
+    Case "B"
+        'PASS: drop back to main menu
+    Case "N"
+        'TODO
+    Case "P"
+        'TODO
+    Case "R"
+        'TODO
+    Case Else
+        'TODO: View Task by Number
+        'DisplayTask()
+    End Select
+End Function
+
+Function HandleTaskMenu(t As Task)
+    Const Choice As String = String.Upper(String.Left(Console.Input("Enter your choice: "), 1))
+    Select Case Choice
+    Case "D"
+        DeleteTask(t)
+    Case "E"
+        'Console.PrintLine(t.Description)
+        Console.PrintLine("---")
+        Const newDescription As String = Console.Input("> ")
+        If String.Len(String.Trim(newDescription)) > 0 Then
+            't.Description = newDescription
+            SaveTask(t)
+        End If
+    Case "O"
+        'TODO
+    Case "R"
+        t.IsComplete = False
+        SaveTask(t)
+    Case "T"
+        Console.PrintLine(t.Title)
+        Console.PrintLine("---")
+        Const newTitle As String = Console.Input("> ")
+        If String.Len(String.Trim(newTitle)) > 0 Then
+            t.Title = newTitle
+            SaveTask(t)
+        End If
+    Case "X"
+        t.IsComplete = True
+        SaveTask(t)
+    Case Else
+        'PASS: ...
+    End Select
+End Function
+
+Function LoadTask(order As Numeric) As Task
+    Var t As Task
+    If order > 0 Then
+        Const filename As String = DATA_DIR + String.FromNumeric(order) + ".txt"
+        If File.Exists(filename) Then
+            Const taskdata As String = File.ReadText(filename)
+            Const lines As List = String.Split(taskdata, Environment.NewLine())
+            If List.Len(lines) > 0 Then
+                Var title As String = ""
+                Var description As String = ""
+                Var isComplete As Boolean = False
+
+                If List.Len(lines) > 3 Then
+                    description = String.Trim(lines[4])
+                End If
+
+                If List.Len(lines) > 2 Then
+                    Const completeText As String = String.Upper(String.Trim(lines[3]))
+                    If completeText == "YES" Then
+                        isComplete = True
+                    End If
+                End If
+
+                If List.Len(lines) > 1 Then
+                    'PASS: skip order, it's how we got here...
+                End If
+
+                title = lines[1]
+
+                t = CreateTask(title, description, order, isComplete)
+            End If
+        End If
+    End If
+    Return t
+End Function
+
+Function TruncateAndPadText(t As String, maxLength As Numeric, paddingText As String) As String
+    Var paddedText As String = t
+    Var currentTextLength As Numeric = String.Len(t)
+    If currentTextLength > maxLength Then
+        paddedText = String.Left(paddedText, maxLength)
+    ElseIf currentTextLength < maxLength Then
+        Var paddingLength As Numeric = (maxLength - currentTextLength) / String.Len(paddingText)
+        For i As Numeric = 1 To paddingLength
+            paddedText = paddedText + paddingText
+        End For
+    Else
+        'PASS: leave it alone, it's fine!
+    End If
+    Return paddedText
+End Function
+
+Function SaveTask(t As Task)
+    If t.Order > 0 Then
+        Const savefile As String = DATA_DIR + String.FromNumeric(t.Order) + ".txt"
+        Var completeText As String = "No"
+        If t.IsComplete Then
+            completeText = "Yes"
+        End If
+        Const taskText As String = String.Trim(t.Title) + Environment.NewLine() \
+            + t.Order + Environment.NewLine() \
+            + completeText + Environment.NewLine() \
+            + ""
+            '+ String.Trim(t.Description) + Environment.NewLine()
+        File.WriteText(savefile, taskText)
+        UpdateIndex(t, False)
+    Else
+        Console.PrintLine("Invalid task order [" + t.Order + "]. Task not saved.")
+    End If
+End Function
+
+Function UpdateIndex(t As Task, shouldDelete As Boolean)
+    Const indexfile As String = DATA_DIR + INDEX_FILE
+    If t.Order > 0 And File.Exists(indexfile) Then
+        Var indexData As String = File.ReadText(indexfile)
+        Var entries As List = String.Split(indexData, Environment.NewLine())
+        'TODO
+    Else
+        If t.Order > 0 Then
+            If shouldDelete == False Then 'having `Not` would be nice...
+                File.WriteText(indexfile, t.Order + Environment.NewLine())
+            End If
+        Else
+            File.WriteText(indexfile, "")
+        End If
+    End If
+
+    UpdateTaskList()
+End Function
+
+'Awkward, but it'll work... imagine how nice it'll be once the sqlite database stuff (or JSON, etc.) is implemented!
+Function UpdateTaskList()
+    Const indexfile As String = DATA_DIR + INDEX_FILE
+    If File.Exists(indexfile) Then
+        Var indexData As String = File.ReadText(indexfile)
+        Var taskOrders As List = String.Split(indexData, Environment.NewLine())
+        If List.Len(taskOrders) > 0 Then
+            Var newTasksList As List = []
+            Var currentTask As Task
+            For i As Numeric = 1 To List.Len(taskOrders)
+                If String.Len(String.Trim(taskOrders[i])) > 0 Then
+                    currentTask = LoadTask(String.ToNumeric(taskOrders[i]))
+                    newTasksList = List.Append(newTasksList, currentTask)
+                End If
+            End For
+            Global_Tasks = newTasksList
+        End If
+    End If
+End Function
