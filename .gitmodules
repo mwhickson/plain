@@ -1,0 +1,3 @@
+[submodule "support/plain-zed"]
+	path = support/plain-zed
+	url = https://github.com/mwhickson/plain-zed.git
