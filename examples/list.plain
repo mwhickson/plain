@@ -174,10 +174,22 @@ Function DisplayTaskMenu()
     Console.PrintLine("---")
 End Function
 
+Function FileNotExistsOrEmpty(filename As String) As Boolean
+	If File.Exists(filename) Then
+		Const contents As String = File.ReadText(filename)
+		If String.Len(String.Trim(contents)) > 0 Then
+			Return False
+		End If
+	End If
+
+	Return True
+End Function
+
 Function HandleMenuPrompt()
     Const Choice As String = String.Upper(String.Left(Console.Input("Enter your choice: "), 1))
     Select Case Choice
     Case "A"
+    	Console.Cls()
         AddTask()
     Case "L"
         DisplayTaskList()
@@ -218,8 +230,8 @@ Function HandleTaskListMenu()
 			Else
 				Var dummy1 As String = Console.Input("ERROR: Task not found.")
 			End If
-        Else
-        	Var dummy2 As String = Console.Input("ERROR: Invalid Task requested.")
+        'Else
+        '	Var dummy2 As String = Console.Input("ERROR: Invalid Task requested.")
         End If
     End Select
 End Function
@@ -258,6 +270,12 @@ Function HandleTaskMenu(t As Task)
     End Select
 End Function
 
+Function LoadIndex(indexfile As String) As List
+	Const indexData As String = File.ReadText(indexfile)
+	Const entries As List = String.Split(indexData, Environment.NewLine())
+	Return NormalizeIndex(entries)
+End Function
+
 Function LoadTask(order As Numeric) As Task
     Var t As Task
     If order > 0 Then
@@ -292,6 +310,18 @@ Function LoadTask(order As Numeric) As Task
         End If
     End If
     Return t
+End Function
+
+Function NormalizeIndex(index As List) As List
+	Var normalizedEntries As List
+	For i As Numeric = 1 To List.Len(index)
+		Console.PrintLine(String.FromNumeric(i) + " : " + index[i]) 'DEBUG:
+		If String.Len(String.Trim(index[i])) > 0 And String.ToNumeric(index[i]) > 0 Then
+			normalizedEntries = List.Append(normalizedEntries, String.Trim(index[i]))
+		End If
+	End For
+	Var dummy As String = Console.Input("...") 'DEBUG:
+	Return normalizedEntries
 End Function
 
 Function TruncateAndPadText(t As String, maxLength As Numeric, paddingText As String) As String
@@ -333,16 +363,30 @@ End Function
 Function UpdateIndex(t As Task, shouldDelete As Boolean)
     Const indexfile As String = DATA_DIR + INDEX_FILE
     If t.Order > 0 And File.Exists(indexfile) Then
-        Var indexData As String = File.ReadText(indexfile)
-        Var entries As List = String.Split(indexData, Environment.NewLine())
-        'TODO
+        Var entries As List = LoadIndex(indexfile)
+
+        Var found As Boolean = False
+        For i As Numeric = 1 To List.Len(entries)
+        	If entries[i] == t.Order Then
+         		found = True
+           		Break
+         	End If
+        End For
+
+        If found == False Then
+        	entries = List.Append(entries, t.Order)
+         	Var newEntries As String = String.Join(entries, Environment.NewLine())
+         	File.WriteText(indexfile, newEntries)
+        End If
     Else
         If t.Order > 0 Then
             If shouldDelete == False Then 'having `Not` would be nice...
-                'File.WriteText(indexfile, t.Order + Environment.NewLine())
+                File.WriteText(indexfile, t.Order + Environment.NewLine())
             End If
         Else
-            'File.WriteText(indexfile, "")
+        	If FileNotExistsOrEmpty(indexfile) Then
+            	File.WriteText(indexfile, "")
+            End If
         End If
     End If
 
