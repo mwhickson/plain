@@ -20,7 +20,7 @@ System.Exit(Result)
 '----------
 
 Function Main() As Numeric
-    Console.Cls()
+    'Console.Cls()
     Console.PrintLine("PLAIN List Demo")
     Console.PrintLine("------------------")
     Console.PrintLine()
@@ -118,28 +118,32 @@ Function DisplayTask(t As Task)
     Else
         Console.PrintLine("No")
     End If
+    Console.PrintLine()
+    Console.PrintLine(t.Description)
+    Console.PrintLine()
     DisplayTaskMenu()
-    'Console.PrintLine(t.Description)
+    Console.PrintLine()
     HandleTaskMenu(t)
 End Function
 
-Function DisplayTaskList(pageNumber As Numeric, sortOrder As String)
+Function DisplayTaskListPage(pageNumber As Numeric, sortOrder As String)
     'TODO: paging + pageNumber + sortOrder
     Console.PrintLine(TruncateAndPadText("Order", 10, " "), \
         " | ", \
         TruncateAndPadText("Title", 54, " "), \
         " | ", \
         TruncateAndPadText("Complete", 10, " "))
-    For i As Numeric = 1 To 80
+    For i As Numeric = 1 To 82 'HACK: it should be 80
         Console.Print("-")
     End For
     Console.PrintLine()
     Var completeText As String = "N"
+    'Console.PrintLine("GLOBAL Tasks count", String.FromNumeric(List.Len(Global_Tasks))) 'DEBUG:
     For j As Numeric = 1 To List.Len(Global_Tasks)
         If Global_Tasks[j].IsComplete Then
             completeText = "Y"
         End If
-        Console.PrintLine(TruncateAndPadText(Global_Tasks[j].Order, 10, " "), \
+        Console.PrintLine(TruncateAndPadText(String.FromNumeric(Global_Tasks[j].Order), 10, " "), \
             " | ", \
             TruncateAndPadText(Global_Tasks[j].Title, 54, " "), \
             " | ", \
@@ -149,19 +153,24 @@ End Function
 
 Function DisplayTaskList()
     Console.Cls()
+    DisplayTaskListPage(1, "ASC")
+    Console.PrintLine()
     DisplayTaskListMenu()
+    Console.PrintLine()
     HandleTaskListMenu()
 End Function
 
 Function DisplayTaskListMenu()
     Console.PrintLine("---")
-    Console.PrintLine("#) View Task Number # | B)ack | N)ext Page | P)revious Page | R)everse List Order")
+    ' Console.PrintLine("#) View Task Number # | B)ack | N)ext Page | P)revious Page | R)everse List Order")
+    Console.PrintLine("#) View Task Number #")
     Console.PrintLine("---")
 End Function
 
 Function DisplayTaskMenu()
     Console.PrintLine("---")
-    Console.PrintLine("X) Complete || O)rder | R)e-Open | E)dit Description | T) Edit Title | D)elete")
+    'Console.PrintLine("X) Complete || O)rder | R)e-Open | E)dit Description | T) Edit Title | D)elete")
+    Console.PrintLine("X) Complete || R)e-Open | E)dit Description | T) Edit Title | D)elete")
     Console.PrintLine("---")
 End Function
 
@@ -181,7 +190,8 @@ Function HandleMenuPrompt()
 End Function
 
 Function HandleTaskListMenu()
-    Const Choice As String = String.Upper(String.Left(Console.Input("Enter your choice: "), 1))
+	Const RawChoice As String = String.Trim(Console.Input("Enter your choice: "))
+    Const Choice As String = String.Upper(String.Left(RawChoice, 1))
     Select Case Choice
     Case "B"
         'PASS: drop back to main menu
@@ -192,8 +202,25 @@ Function HandleTaskListMenu()
     Case "R"
         'TODO
     Case Else
-        'TODO: View Task by Number
-        'DisplayTask()
+        'View Task by Number
+        Const taskNumber As Numeric = String.ToNumeric(RawChoice)
+        If taskNumber > 0 Then
+	        Var t As Task
+	        For i As Numeric = 1 To List.Len(Global_Tasks)
+				t = Global_Tasks[i]
+				If t.Order == taskNumber Then
+					Break
+				End If
+	        End For
+
+			If t.Order == taskNumber Then
+	        	DisplayTask(t)
+			Else
+				Var dummy1 As String = Console.Input("ERROR: Task not found.")
+			End If
+        Else
+        	Var dummy2 As String = Console.Input("ERROR: Invalid Task requested.")
+        End If
     End Select
 End Function
 
@@ -203,15 +230,15 @@ Function HandleTaskMenu(t As Task)
     Case "D"
         DeleteTask(t)
     Case "E"
-        'Console.PrintLine(t.Description)
+        Console.PrintLine(t.Description)
         Console.PrintLine("---")
         Const newDescription As String = Console.Input("> ")
         If String.Len(String.Trim(newDescription)) > 0 Then
-            't.Description = newDescription
+            t.Description = newDescription
             SaveTask(t)
         End If
     Case "O"
-        'TODO
+        'TODO: someday... maybe...?
     Case "R"
         t.IsComplete = False
         SaveTask(t)
@@ -268,6 +295,7 @@ Function LoadTask(order As Numeric) As Task
 End Function
 
 Function TruncateAndPadText(t As String, maxLength As Numeric, paddingText As String) As String
+	'Console.PrintLine("TruncateAndPadText() " + t + " | " + String.FromNumeric(maxLength) + " | [" + paddingText + "]") 'DEBUG:
     Var paddedText As String = t
     Var currentTextLength As Numeric = String.Len(t)
     If currentTextLength > maxLength Then
@@ -294,7 +322,7 @@ Function SaveTask(t As Task)
             + t.Order + Environment.NewLine() \
             + completeText + Environment.NewLine() \
             + ""
-            '+ String.Trim(t.Description) + Environment.NewLine()
+            + String.Trim(t.Description) + Environment.NewLine()
         File.WriteText(savefile, taskText)
         UpdateIndex(t, False)
     Else
@@ -311,32 +339,42 @@ Function UpdateIndex(t As Task, shouldDelete As Boolean)
     Else
         If t.Order > 0 Then
             If shouldDelete == False Then 'having `Not` would be nice...
-                File.WriteText(indexfile, t.Order + Environment.NewLine())
+                'File.WriteText(indexfile, t.Order + Environment.NewLine())
             End If
         Else
-            File.WriteText(indexfile, "")
+            'File.WriteText(indexfile, "")
         End If
     End If
 
     UpdateTaskList()
+    'Console.PrintLine("GLOBAL Tasks count", String.FromNumeric(List.Len(Global_Tasks))) 'DEBUG:
+    'Const dummy As String = Console.Input("") 'DEBUG:
 End Function
 
 'Awkward, but it'll work... imagine how nice it'll be once the sqlite database stuff (or JSON, etc.) is implemented!
 Function UpdateTaskList()
+	' Console.PrintLine("UpdateTaskList()") 'DEBUG:
     Const indexfile As String = DATA_DIR + INDEX_FILE
     If File.Exists(indexfile) Then
+    	' Console.PrintLine("UpdateTaskList() - indexfile: " + indexfile) 'DEBUG:
         Var indexData As String = File.ReadText(indexfile)
         Var taskOrders As List = String.Split(indexData, Environment.NewLine())
         If List.Len(taskOrders) > 0 Then
+       		' Console.PrintLine("UpdateTaskList() - got tasks") 'DEBUG:
             Var newTasksList As List = []
             Var currentTask As Task
             For i As Numeric = 1 To List.Len(taskOrders)
                 If String.Len(String.Trim(taskOrders[i])) > 0 Then
+              		' Console.PrintLine("UpdateTaskList() - processing task " + String.FromNumeric(i)) 'DEBUG:
                     currentTask = LoadTask(String.ToNumeric(taskOrders[i]))
+                    ' DisplayTask(currentTask) 'DEBUG:
                     newTasksList = List.Append(newTasksList, currentTask)
                 End If
             End For
+            'Console.PrintLine("Tasks count", String.FromNumeric(List.Len(newTasksList))) 'DEBUG:
             Global_Tasks = newTasksList
+            'Console.PrintLine("GLOBAL Tasks count", String.FromNumeric(List.Len(Global_Tasks))) 'DEBUG:
+            'Const dummy As String = Console.Input("") 'DEBUG:
         End If
     End If
 End Function
