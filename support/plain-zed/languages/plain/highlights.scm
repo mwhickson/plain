@@ -1,83 +1,33 @@
-; --- Comments ---
+; Comments and literals
 (comment) @comment
-
-; --- Strings & Literals ---
 (string_literal) @string
 (numeric_literal) @number
 (boolean_literal) @boolean
-"None" @constant.builtin
+(none_literal) @constant.builtin
 
-; --- Keywords & Control Flow ---
-[
-  "If"
-  "Then"
-  "Else"
-  "ElseIf"
-  "Select"
-  "Case"
-  "For"
-  "To"
-  "Step"
-  "While"
-  "Return"
-  "End"
-  "Break"
-] @keyword.control
+; Control flow and declarations
+["if_keyword" "then_keyword" "else_keyword" "elseif_keyword"
+ "select_keyword" "case_keyword" "for_keyword" "to_keyword" "step_keyword"
+ "while_keyword" "return_keyword" "end_keyword" "break_keyword"] @keyword.control
+["var_keyword" "const_keyword" "function_keyword" "struct_keyword"
+ "as_keyword"] @keyword.storage
+["and_keyword" "or_keyword"] @keyword.operator
 
-[
-  "Var"
-  "Const"
-  "Function"
-  "Struct"
-  "As"
-] @keyword.storage
-
-[
-  "And"
-  "Or"
-] @keyword.operator
-
-; --- Types ---
-[
-  "Numeric"
-  "String"
-  "Boolean"
-  "List"
-  "Struct"
-  "Function"
-] @type
-
-; --- Standard Library Modules ---
-[
-  "Console"
-  "System"
-  "List"
-  "String"
-  "Struct"
-  "Math"
-  "Random"
-  "File"
-  "Time"
-  "Decimal"
-  "Environment"
-] @support.class
-
-; --- Identifiers & Functions ---
+; Names and types
 (identifier) @variable
 (function_statement name: (identifier) @function)
-(call_expression function: (identifier) @function.call)
+(call_expression function: [(identifier) (property_access_expression)] @function.call)
+(parameter name: (identifier) @variable.parameter)
+(struct_statement name: (identifier) @type)
+(struct_member name: (identifier) @property)
+(property_access_expression property: (identifier) @property)
+(variable_statement type: (type_name) @type)
+(parameter type: (type_name) @type)
+(struct_member type: (type_name) @type)
+(function_statement return_type: (type_name) @type)
+"numeric_keyword" @type
+(property_access_expression object: (identifier) @support.class
+  (#match? @support.class "^(Console|System|List|String|Struct|Math|Random|File|Time|Decimal|Environment)$"))
 
-; --- Operators ---
-[
-  "+"
-  "-"
-  "*"
-  "/"
-  "=="
-  "!="
-  "<"
-  "<="
-  ">"
-  ">="
-  "="
-] @operator
+; Operators
+[("+") ("-") ("*") ("/") ("==") ("!=") ("<") ("<=") (">") (">=") ("=")] @operator
